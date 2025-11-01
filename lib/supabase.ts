@@ -34,6 +34,12 @@ export async function getKidProfile(kidId: string): Promise<UserProfile | null> 
       return null;
     }
 
+    // Deserialize completed lessons (convert ISO strings back to Date objects)
+    const deserializedCompletedLessons = (data.completed_lessons || []).map((lesson: any) => ({
+      ...lesson,
+      completedAt: lesson.completedAt ? new Date(lesson.completedAt) : new Date()
+    }));
+    
     // Map database columns to UserProfile
     const userProfile: UserProfile = {
       uid: data.kid_id,
@@ -45,7 +51,7 @@ export async function getKidProfile(kidId: string): Promise<UserProfile | null> 
       lastLoginAt: data.last_login_at ? new Date(data.last_login_at) : new Date(),
       xp: data.xp || 0,
       level: data.level || 1,
-      completedLessons: data.completed_lessons || [],
+      completedLessons: deserializedCompletedLessons,
       skills: data.skills || [],
       achievements: data.achievements || [],
       totalProblemsCompleted: data.total_problems_completed || 0,
@@ -75,6 +81,16 @@ export async function getKidProfile(kidId: string): Promise<UserProfile | null> 
  */
 export async function upsertKidProfile(kidId: string, profile: Partial<UserProfile>) {
   try {
+    // Serialize completed lessons (convert Date objects to ISO strings)
+    const serializedCompletedLessons = profile.completedLessons 
+      ? profile.completedLessons.map(lesson => ({
+          ...lesson,
+          completedAt: lesson.completedAt instanceof Date 
+            ? lesson.completedAt.toISOString() 
+            : lesson.completedAt
+        }))
+      : undefined;
+    
     // Map UserProfile fields to database columns
     const dbProfile: any = {
       kid_id: kidId,
@@ -82,7 +98,7 @@ export async function upsertKidProfile(kidId: string, profile: Partial<UserProfi
       grade_level: profile.gradeLevel,
       xp: profile.xp,
       level: profile.level,
-      completed_lessons: profile.completedLessons,
+      completed_lessons: serializedCompletedLessons,
       skills: profile.skills,
       achievements: profile.achievements,
       total_problems_completed: profile.totalProblemsCompleted,
@@ -130,6 +146,12 @@ export async function upsertKidProfile(kidId: string, profile: Partial<UserProfi
 
     // Map database columns back to UserProfile
     if (data) {
+      // Deserialize completed lessons (convert ISO strings back to Date objects)
+      const deserializedCompletedLessons = (data.completed_lessons || []).map((lesson: any) => ({
+        ...lesson,
+        completedAt: lesson.completedAt ? new Date(lesson.completedAt) : new Date()
+      }));
+      
       const userProfile: UserProfile = {
         uid: data.kid_id,
         email: '',
@@ -140,7 +162,7 @@ export async function upsertKidProfile(kidId: string, profile: Partial<UserProfi
         lastLoginAt: data.last_login_at ? new Date(data.last_login_at) : new Date(),
         xp: data.xp,
         level: data.level,
-        completedLessons: data.completed_lessons || [],
+        completedLessons: deserializedCompletedLessons,
         skills: data.skills || [],
         achievements: data.achievements || [],
         totalProblemsCompleted: data.total_problems_completed || 0,
@@ -187,33 +209,41 @@ export async function getAllKidProfiles(): Promise<UserProfile[]> {
     }
 
     // Map all profiles from database columns to UserProfile
-    return data.map(dbProfile => ({
-      uid: dbProfile.kid_id,
-      email: '',
-      displayName: dbProfile.display_name,
-      photoURL: '',
-      gradeLevel: dbProfile.grade_level,
-      createdAt: dbProfile.created_at ? new Date(dbProfile.created_at) : new Date(),
-      lastLoginAt: dbProfile.last_login_at ? new Date(dbProfile.last_login_at) : new Date(),
-      xp: dbProfile.xp || 0,
-      level: dbProfile.level || 1,
-      completedLessons: dbProfile.completed_lessons || [],
-      skills: dbProfile.skills || [],
-      achievements: dbProfile.achievements || [],
-      totalProblemsCompleted: dbProfile.total_problems_completed || 0,
-      correctAnswers: dbProfile.correct_answers || 0,
-      streak: dbProfile.streak || 0,
-      accuracyRate: dbProfile.accuracy_rate || 0,
-      completedProblems: dbProfile.completed_problems || [],
-      onboardingCompleted: dbProfile.onboarding_completed || false,
-      preferences: {
-        theme: 'auto',
-        soundEnabled: true,
-        animationsEnabled: true,
-        characterAvatar: '',
-        wandStyle: 'default',
-      },
-    }));
+    return data.map(dbProfile => {
+      // Deserialize completed lessons (convert ISO strings back to Date objects)
+      const deserializedCompletedLessons = (dbProfile.completed_lessons || []).map((lesson: any) => ({
+        ...lesson,
+        completedAt: lesson.completedAt ? new Date(lesson.completedAt) : new Date()
+      }));
+      
+      return {
+        uid: dbProfile.kid_id,
+        email: '',
+        displayName: dbProfile.display_name,
+        photoURL: '',
+        gradeLevel: dbProfile.grade_level,
+        createdAt: dbProfile.created_at ? new Date(dbProfile.created_at) : new Date(),
+        lastLoginAt: dbProfile.last_login_at ? new Date(dbProfile.last_login_at) : new Date(),
+        xp: dbProfile.xp || 0,
+        level: dbProfile.level || 1,
+        completedLessons: deserializedCompletedLessons,
+        skills: dbProfile.skills || [],
+        achievements: dbProfile.achievements || [],
+        totalProblemsCompleted: dbProfile.total_problems_completed || 0,
+        correctAnswers: dbProfile.correct_answers || 0,
+        streak: dbProfile.streak || 0,
+        accuracyRate: dbProfile.accuracy_rate || 0,
+        completedProblems: dbProfile.completed_problems || [],
+        onboardingCompleted: dbProfile.onboarding_completed || false,
+        preferences: {
+          theme: 'auto',
+          soundEnabled: true,
+          animationsEnabled: true,
+          characterAvatar: '',
+          wandStyle: 'default',
+        },
+      };
+    });
   } catch (error) {
     console.error('Supabase error:', error);
     return [];

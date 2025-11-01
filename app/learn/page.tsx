@@ -201,13 +201,20 @@ export default function LearnPage() {
     const updatedCompletedLessons = [...(user.completedLessons || []), completedLesson];
     
     console.log('Updating profile with completed lessons:', updatedCompletedLessons);
+    console.log('JSON stringified:', JSON.stringify(updatedCompletedLessons, null, 2));
 
     // Update profile
     const updated = await updateProfile(user.uid, {
       xp: newXP,
       level: newLevel,
-      completedLessons: updatedCompletedLessons as any,
+      completedLessons: updatedCompletedLessons,
     });
+    
+    console.log('updateProfile returned:', updated);
+    
+    if (!updated) {
+      console.error('updateProfile returned null - check Supabase logs');
+    }
 
     console.log('Profile updated:', updated);
     console.log('New completed lessons:', updated?.completedLessons);
