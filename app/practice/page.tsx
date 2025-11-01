@@ -262,21 +262,27 @@ export default function PracticePage() {
           : `Not quite! The correct answer is ${currentProblem.answer}. Let's try another one!`),
       });
 
+    // Calculate accuracy rate for EVERY answer (correct or incorrect)
+    const newCorrectAnswers = user.correctAnswers + (isCorrect ? 1 : 0);
+    const newTotalProblems = user.totalProblemsCompleted + 1;
+    const newAccuracyRate = Math.round((newCorrectAnswers / newTotalProblems) * 100);
+
     if (isCorrect) {
       // Award XP
       const xpEarned = currentProblem.xpReward - (hintIndex * 5);
       const newXP = user.xp + xpEarned;
       const newLevel = Math.floor(newXP / 1000) + 1;
-      const newCompletedProblems = user.totalProblemsCompleted + 1;
       
       // Add to completed problems list
       const completedProblemIds = [...(user.completedProblems || []), currentProblem.id];
 
-      // Update profile
+      // Update profile with accuracy tracking
       const updated = await updateProfile(user.uid, {
         xp: newXP,
         level: newLevel,
-        totalProblemsCompleted: newCompletedProblems,
+        totalProblemsCompleted: newTotalProblems,
+        correctAnswers: newCorrectAnswers,
+        accuracyRate: newAccuracyRate,
         completedProblems: completedProblemIds as any,
       });
 
@@ -284,7 +290,7 @@ export default function PracticePage() {
         setUser(updated);
         
         // Check for newly unlocked achievements
-        checkForAchievements(updated);
+        await checkForAchievements(updated);
       }
 
       // Show animations
@@ -299,6 +305,17 @@ export default function PracticePage() {
       setTimeout(() => {
         setShowXPGain(false);
       }, 2500);
+    } else {
+      // Even if incorrect, update accuracy stats
+      const updated = await updateProfile(user.uid, {
+        totalProblemsCompleted: newTotalProblems,
+        correctAnswers: newCorrectAnswers,
+        accuracyRate: newAccuracyRate,
+      });
+
+      if (updated) {
+        setUser(updated);
+      }
     }
     } catch (error) {
       console.error('Error validating answer:', error);
@@ -347,6 +364,9 @@ export default function PracticePage() {
     if (!userProfile) return;
 
     try {
+      console.log('Checking achievements for user:', userProfile.uid);
+      console.log('Current achievements:', userProfile.achievements?.map(a => a.id));
+      
       const response = await fetch('/api/achievements/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -358,14 +378,19 @@ export default function PracticePage() {
 
       const data = await response.json();
 
+      console.log('Achievement check response:', data);
+
       if (data.success && data.newAchievements.length > 0) {
-        // Show achievement unlock animation
-        setUnlockedAchievements(data.newAchievements);
+        console.log('New achievements unlocked:', data.newAchievements.map((a: any) => a.id));
         
-        // Update user with new profile data
+        // IMPORTANT: Update user state FIRST before showing animations
         if (data.updatedProfile) {
           setUser(data.updatedProfile);
+          console.log('Updated user with new achievements:', data.updatedProfile.achievements?.map((a: any) => a.id));
         }
+        
+        // Then show achievement unlock animation
+        setUnlockedAchievements(data.newAchievements);
       }
     } catch (error) {
       console.error('Failed to check achievements:', error);

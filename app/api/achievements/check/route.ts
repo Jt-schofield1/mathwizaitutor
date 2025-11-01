@@ -18,8 +18,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('Achievement Check API - userId:', userId);
+    console.log('Achievement Check API - current achievements:', userProfile.achievements?.map((a: any) => a.id));
+
     // Check for newly unlocked achievements
     const newAchievements = checkAchievements(userProfile);
+
+    console.log('Achievement Check API - new achievements found:', newAchievements.map(a => a.id));
 
     if (newAchievements.length === 0) {
       return NextResponse.json({
@@ -45,19 +50,31 @@ export async function POST(request: NextRequest) {
       level: Math.floor((userProfile.xp + totalXP) / 1000) + 1,
     };
 
-    // Save to Supabase
+    console.log('Achievement Check API - saving to Supabase...');
+    console.log('Achievement Check API - updated achievements:', updatedProfile.achievements.map((a: any) => a.id));
+
+    // Save to Supabase and get the fresh profile back
+    let savedProfile = null;
     try {
-      await upsertKidProfile(userId, updatedProfile);
+      savedProfile = await upsertKidProfile(userId, updatedProfile);
+      if (!savedProfile) {
+        console.error('Achievement Check API - Failed to save to Supabase (null returned)');
+      } else {
+        console.log('Achievement Check API - Successfully saved to Supabase');
+        console.log('Achievement Check API - saved achievements:', savedProfile.achievements?.map((a: any) => a.id));
+      }
     } catch (error) {
-      console.error('Failed to save achievements to Supabase:', error);
-      // Continue anyway - we'll return the achievements
+      console.error('Achievement Check API - Supabase save error:', error);
     }
+
+    // Return the freshly saved profile (or the calculated one if save failed)
+    const profileToReturn = savedProfile || updatedProfile;
 
     return NextResponse.json({
       success: true,
       newAchievements,
       totalXP,
-      updatedProfile,
+      updatedProfile: profileToReturn,
     });
 
   } catch (error: any) {

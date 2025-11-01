@@ -26,11 +26,13 @@ import {
   LogOut,
   User,
   Sparkles,
-  Zap
+  Zap,
+  GraduationCap
 } from 'lucide-react';
 import Link from 'next/link';
 import { logoutKid } from '@/lib/kid-auth';
 import { getAchievementProgress, getNextAchievement } from '@/lib/achievements';
+import { getGradeDisplay } from '@/lib/utils';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -101,6 +103,10 @@ export default function DashboardPage() {
                     <Star className="w-4 h-4 text-wizard-gold-400 fill-wizard-gold-400" />
                     {user.xp.toLocaleString()} XP
                   </span>
+                  <Link href="/profile" className="flex items-center gap-1 hover:text-white transition-colors">
+                    <GraduationCap className="w-4 h-4 text-wizard-gold-400" />
+                    {getGradeDisplay(user.gradeLevel)}
+                  </Link>
                 </div>
               </div>
             </div>

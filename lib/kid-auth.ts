@@ -41,6 +41,7 @@ function createNewProfile(kid: typeof KIDS[0]): UserProfile {
     level: 1,
     streak: 0,
     totalProblemsCompleted: 0,
+    correctAnswers: 0, // NEW: Track correct answers for accuracy
     accuracyRate: 0,
     achievements: [],
     skills: [],

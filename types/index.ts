@@ -18,6 +18,7 @@ export interface UserProfile extends User {
   level: number;
   streak: number;
   totalProblemsCompleted: number;
+  correctAnswers: number; // NEW: Track correct answers for accuracy calculation
   accuracyRate: number;
   achievements: Achievement[];
   skills: SkillMastery[];

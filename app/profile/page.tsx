@@ -9,14 +9,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SpellBookProgress } from '@/components/wizard/spell-book-progress';
+import { GradeLevelSelector } from '@/components/wizard/grade-level-selector';
 import { useAuthStore } from '@/lib/store';
+import { updateProfile } from '@/lib/kid-auth';
 import { motion } from 'framer-motion';
-import { User, Trophy, Target, Flame, Star, Award, Settings, ChevronLeft } from 'lucide-react';
+import { User, Trophy, Target, Flame, Star, Award, Settings, ChevronLeft, GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import { getGradeDisplay, getAchievementBadge } from '@/lib/utils';
 
 export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
+  const setUser = useAuthStore((state) => state.setUser);
+  const [showGradeSelector, setShowGradeSelector] = useState(false);
+
+  const handleGradeChange = async (newGrade: number) => {
+    if (!user) return;
+    
+    const updated = await updateProfile(user.uid, {
+      gradeLevel: newGrade,
+    });
+
+    if (updated) {
+      setUser(updated);
+      setShowGradeSelector(false);
+      
+      // Show success message
+      alert(`🎉 Great! You're now learning ${getGradeDisplay(newGrade)} math!`);
+    }
+  };
 
   if (!user) {
     return (
@@ -76,6 +96,68 @@ export default function ProfilePage() {
                 <SpellBookProgress xp={user.xp} level={user.level} showDetails />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Grade Level Section */}
+        <Card className="mb-8 border-4 border-wizard-purple-400">
+          <CardHeader className="bg-gradient-to-r from-wizard-purple-100 to-wizard-gold-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <GraduationCap className="w-6 h-6 text-wizard-purple-600" />
+                  Your Grade Level
+                </CardTitle>
+                <CardDescription>
+                  Change your grade level when you're ready for a new challenge!
+                </CardDescription>
+              </div>
+              {!showGradeSelector && (
+                <Button 
+                  onClick={() => setShowGradeSelector(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  Change Grade
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            {showGradeSelector ? (
+              <div className="space-y-4">
+                <GradeLevelSelector
+                  currentGrade={user.gradeLevel}
+                  onGradeChange={handleGradeChange}
+                  showTitle={false}
+                />
+                <Button
+                  onClick={() => setShowGradeSelector(false)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-6xl mb-4">
+                  {user.gradeLevel === 0 ? '🎨' : user.gradeLevel <= 5 ? '📚' : user.gradeLevel <= 8 ? '🔬' : '🚀'}
+                </div>
+                <h3 className="text-3xl font-bold text-wizard-purple-800 mb-2">
+                  {getGradeDisplay(user.gradeLevel)}
+                </h3>
+                <p className="text-wizard-purple-600 mb-6">
+                  You're learning math at the {getGradeDisplay(user.gradeLevel)} level.
+                  <br />
+                  Ready to level up? Click "Change Grade" above!
+                </p>
+                <Badge variant="gold" className="text-lg px-6 py-2">
+                  <Star className="w-4 h-4 mr-2" />
+                  {user.totalProblemsCompleted} Problems Completed
+                </Badge>
+              </div>
+            )}
           </CardContent>
         </Card>
 
