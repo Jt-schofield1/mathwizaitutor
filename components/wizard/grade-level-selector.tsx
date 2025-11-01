@@ -41,16 +41,22 @@ export function GradeLevelSelector({ currentGrade, onGradeChange, showTitle = tr
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handleGradeSelect = (grade: number) => {
+    console.log('Grade selected:', grade);
     setSelectedGrade(grade);
     if (grade !== currentGrade) {
+      console.log('Showing confirmation dialog');
       setShowConfirmation(true);
+    } else {
+      console.log('Same grade selected, no change needed');
     }
   };
 
   const handleConfirmChange = async () => {
+    console.log('Confirming grade change to:', selectedGrade);
     setIsChanging(true);
     try {
       await onGradeChange(selectedGrade);
+      console.log('Grade change completed successfully');
       setShowConfirmation(false);
     } catch (error) {
       console.error('Failed to change grade level:', error);
@@ -88,10 +94,11 @@ export function GradeLevelSelector({ currentGrade, onGradeChange, showTitle = tr
           return (
             <motion.button
               key={grade.value}
+              type="button"
               onClick={() => handleGradeSelect(grade.value)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`relative p-4 rounded-xl border-4 transition-all ${
+              className={`relative p-4 rounded-xl border-4 transition-all cursor-pointer ${
                 isSelected
                   ? 'border-wizard-purple-600 bg-wizard-purple-50 shadow-lg'
                   : 'border-wizard-purple-200 bg-white hover:border-wizard-purple-400'

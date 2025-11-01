@@ -25,9 +25,13 @@ export default function ProfilePage() {
   const handleGradeChange = async (newGrade: number) => {
     if (!user) return;
     
+    console.log('Changing grade from', user.gradeLevel, 'to', newGrade);
+    
     const updated = await updateProfile(user.uid, {
       gradeLevel: newGrade,
     });
+
+    console.log('Profile updated:', updated);
 
     if (updated) {
       setUser(updated);
@@ -35,6 +39,8 @@ export default function ProfilePage() {
       
       // Show success message
       alert(`🎉 Great! You're now learning ${getGradeDisplay(newGrade)} math!`);
+    } else {
+      alert('❌ Failed to change grade level. Please try again!');
     }
   };
 
@@ -114,6 +120,7 @@ export default function ProfilePage() {
               </div>
               {!showGradeSelector && (
                 <Button 
+                  type="button"
                   onClick={() => setShowGradeSelector(true)}
                   variant="outline"
                   size="sm"
@@ -132,6 +139,7 @@ export default function ProfilePage() {
                   showTitle={false}
                 />
                 <Button
+                  type="button"
                   onClick={() => setShowGradeSelector(false)}
                   variant="outline"
                   className="w-full"
