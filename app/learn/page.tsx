@@ -137,10 +137,20 @@ export default function LearnPage() {
   // Get valid lesson IDs for current grade
   const validLessonIds = new Set(lessons.map(l => l.id));
   
+  console.log('Learn Page - Valid lesson IDs for grade', user.gradeLevel, ':', Array.from(validLessonIds));
+  console.log('Learn Page - User completed lessons raw:', user.completedLessons);
+  
   // Filter out completed lessons from other grades
   const completedLessonIds = (user.completedLessons || [])
-    .map(cl => cl.lessonId)
-    .filter(lessonId => validLessonIds.has(lessonId));
+    .map(cl => {
+      console.log('Checking lesson:', cl, 'lessonId:', cl.lessonId, 'type:', typeof cl.lessonId);
+      return cl.lessonId;
+    })
+    .filter(lessonId => {
+      const isValid = validLessonIds.has(lessonId);
+      console.log(`Lesson ${lessonId} valid?`, isValid);
+      return isValid;
+    });
   
   console.log('Learn Page - User:', user.uid);
   console.log('Learn Page - User Grade:', user.gradeLevel);
