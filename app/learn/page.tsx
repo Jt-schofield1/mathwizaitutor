@@ -100,17 +100,58 @@ export default function LearnPage() {
     return <div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>;
   }
 
+  // Auto-cleanup: Remove completed lessons from other grades
+  useEffect(() => {
+    const cleanupInvalidLessons = async () => {
+      if (!user) return;
+      
+      const lessons = generateLessonsForGrade(user.gradeLevel);
+      const validLessonIds = new Set(lessons.map(l => l.id));
+      
+      // Filter to only keep lessons for current grade
+      const validCompletedLessons = (user.completedLessons || [])
+        .filter(cl => validLessonIds.has(cl.lessonId));
+      
+      // If we filtered out any lessons, update the profile
+      if (validCompletedLessons.length !== (user.completedLessons || []).length) {
+        console.log('Cleaning up invalid lessons from other grades...');
+        console.log('Before:', user.completedLessons);
+        console.log('After:', validCompletedLessons);
+        
+        const updated = await updateProfile(user.uid, {
+          completedLessons: validCompletedLessons as any,
+        });
+        
+        if (updated) {
+          setUser(updated);
+          console.log('Invalid lessons cleaned up successfully');
+        }
+      }
+    };
+    
+    cleanupInvalidLessons();
+  }, [user?.gradeLevel]); // Run when grade level changes
+
   const lessons = generateLessonsForGrade(user.gradeLevel);
-  const completedLessonIds = (user.completedLessons || []).map(cl => cl.lessonId);
+  
+  // Get valid lesson IDs for current grade
+  const validLessonIds = new Set(lessons.map(l => l.id));
+  
+  // Filter out completed lessons from other grades
+  const completedLessonIds = (user.completedLessons || [])
+    .map(cl => cl.lessonId)
+    .filter(lessonId => validLessonIds.has(lessonId));
   
   console.log('Learn Page - User:', user.uid);
-  console.log('Learn Page - Completed lesson IDs:', completedLessonIds);
+  console.log('Learn Page - User Grade:', user.gradeLevel);
+  console.log('Learn Page - All completed lessons:', (user.completedLessons || []).map(cl => cl.lessonId));
+  console.log('Learn Page - Valid completed lesson IDs for this grade:', completedLessonIds);
   console.log('Learn Page - Total lessons:', lessons.map(l => ({ id: l.id, title: l.title, prereq: l.prerequisite })));
   
-  // Calculate progress
+  // Calculate progress (only count valid lessons for current grade)
   const completedCount = completedLessonIds.length;
   const totalCount = lessons.length;
-  const progressPercent = Math.round((completedCount / totalCount) * 100);
+  const progressPercent = Math.min(100, Math.round((completedCount / totalCount) * 100));
 
   const isLessonUnlocked = (lesson: LessonData) => {
     if (!lesson.prerequisite) {

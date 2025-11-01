@@ -27,8 +27,11 @@ export default function ProfilePage() {
     
     console.log('Changing grade from', user.gradeLevel, 'to', newGrade);
     
+    // IMPORTANT: Clear completed lessons when changing grades
+    // because lesson IDs are different for each grade
     const updated = await updateProfile(user.uid, {
       gradeLevel: newGrade,
+      completedLessons: [], // Reset lessons for new grade
     });
 
     console.log('Profile updated:', updated);
@@ -37,8 +40,8 @@ export default function ProfilePage() {
       setUser(updated);
       setShowGradeSelector(false);
       
-      // Show success message
-      alert(`🎉 Great! You're now learning ${getGradeDisplay(newGrade)} math!`);
+      // Show success message with explanation
+      alert(`🎉 Great! You're now learning ${getGradeDisplay(newGrade)} math!\n\nYour lesson progress has been reset to match your new grade level.`);
     } else {
       alert('❌ Failed to change grade level. Please try again!');
     }
