@@ -171,6 +171,7 @@ export default function PracticePage() {
   const [previousAttempts, setPreviousAttempts] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [unlockedAchievements, setUnlockedAchievements] = useState<Achievement[]>([]);
+  const [isCheckingAchievements, setIsCheckingAchievements] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -289,7 +290,8 @@ export default function PracticePage() {
       if (updated) {
         setUser(updated);
         
-        // Check for newly unlocked achievements
+        // Wait a moment for Supabase to fully save, then check for achievements
+        await new Promise(resolve => setTimeout(resolve, 200));
         await checkForAchievements(updated);
       }
 
@@ -347,6 +349,8 @@ export default function PracticePage() {
     setPreviousAttempts([]); // Clear previous attempts for new question
     setShowWandAnimation(false);
     setShowXPGain(false);
+    setUnlockedAchievements([]); // Clear achievements
+    setIsCheckingAchievements(false); // Reset achievement check flag
     
     // Small delay to ensure state clears
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -362,6 +366,14 @@ export default function PracticePage() {
 
   const checkForAchievements = async (userProfile: typeof user) => {
     if (!userProfile) return;
+    
+    // Prevent duplicate checks
+    if (isCheckingAchievements) {
+      console.log('Achievement check already in progress, skipping...');
+      return;
+    }
+
+    setIsCheckingAchievements(true);
 
     try {
       console.log('Checking achievements for user:', userProfile.uid);
@@ -394,6 +406,11 @@ export default function PracticePage() {
       }
     } catch (error) {
       console.error('Failed to check achievements:', error);
+    } finally {
+      // Reset the flag after a delay to allow the state to update
+      setTimeout(() => {
+        setIsCheckingAchievements(false);
+      }, 1000);
     }
   };
 
