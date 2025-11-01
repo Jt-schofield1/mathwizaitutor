@@ -2,7 +2,7 @@
 -- Run this in Supabase SQL Editor
 
 UPDATE profiles
-SET completed_lessons = '[]'::jsonb
+SET completed_lessons = '{}'::text[]
 WHERE kid_id = 'robert';
 
 -- Verify the reset
