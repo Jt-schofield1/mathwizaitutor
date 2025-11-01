@@ -1,0 +1,12 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Magic Crystal -->
+  <polygon points="32,8 42,20 38,50 26,50 22,20" fill="#A78BFA" opacity="0.8"/>
+  <polygon points="32,8 22,20 32,30" fill="#C4B5FD"/>
+  <polygon points="32,8 42,20 32,30" fill="#8B5CF6"/>
+  <polygon points="22,20 26,50 32,30" fill="#DDD6FE"/>
+  <polygon points="42,20 38,50 32,30" fill="#A78BFA"/>
+  <!-- Shine -->
+  <line x1="28" y1="15" x2="30" y2="25" stroke="#FFFFFF" stroke-width="2" opacity="0.7"/>
+  <line x1="34" y1="18" x2="35" y2="28" stroke="#FFFFFF" stroke-width="1.5" opacity="0.6"/>
+</svg>
+

@@ -1,0 +1,12 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Magic Wand -->
+  <line x1="15" y1="50" x2="45" y2="20" stroke="#8B4513" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="45,15 48,18 53,13 50,10" fill="#FCD34D"/>
+  <polygon points="45,15 42,18 47,23 50,20" fill="#FBBF24"/>
+  <!-- Sparkles -->
+  <polygon points="20,45 22,48 25,46 23,43" fill="#FCD34D"/>
+  <circle cx="28" cy="36" r="2" fill="#FCD34D"/>
+  <circle cx="35" cy="29" r="2" fill="#FBBF24"/>
+  <polygon points="40,24 41,26 43,25 42,23" fill="#FCD34D"/>
+</svg>
+
