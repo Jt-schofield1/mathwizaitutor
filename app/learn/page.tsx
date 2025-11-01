@@ -103,14 +103,23 @@ export default function LearnPage() {
   const lessons = generateLessonsForGrade(user.gradeLevel);
   const completedLessonIds = (user.completedLessons || []).map(cl => cl.lessonId);
   
+  console.log('Learn Page - User:', user.uid);
+  console.log('Learn Page - Completed lesson IDs:', completedLessonIds);
+  console.log('Learn Page - Total lessons:', lessons.map(l => ({ id: l.id, title: l.title, prereq: l.prerequisite })));
+  
   // Calculate progress
   const completedCount = completedLessonIds.length;
   const totalCount = lessons.length;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
 
   const isLessonUnlocked = (lesson: LessonData) => {
-    if (!lesson.prerequisite) return true;
-    return completedLessonIds.includes(lesson.prerequisite);
+    if (!lesson.prerequisite) {
+      console.log(`Lesson ${lesson.id} has no prerequisite - UNLOCKED`);
+      return true;
+    }
+    const unlocked = completedLessonIds.includes(lesson.prerequisite);
+    console.log(`Lesson ${lesson.id} prerequisite ${lesson.prerequisite}: ${unlocked ? 'UNLOCKED' : 'LOCKED'}`);
+    return unlocked;
   };
 
   const isLessonCompleted = (lessonId: string) => {
@@ -120,7 +129,20 @@ export default function LearnPage() {
   const handleCompleteLesson = async () => {
     if (!selectedLesson || !user) return;
     
+    console.log('Completing lesson:', selectedLesson);
+    console.log('Current completed lessons:', user.completedLessons);
+    
     setCompletingLesson(true);
+
+    // Check if already completed
+    const alreadyCompleted = (user.completedLessons || []).some(cl => cl.lessonId === selectedLesson);
+    if (alreadyCompleted) {
+      console.log('Lesson already completed, not adding again');
+      setCompletingLesson(false);
+      setSelectedLesson(null);
+      setLessonStep(0);
+      return;
+    }
 
     // Award XP
     const xpEarned = 100;
@@ -136,6 +158,8 @@ export default function LearnPage() {
     };
 
     const updatedCompletedLessons = [...(user.completedLessons || []), completedLesson];
+    
+    console.log('Updating profile with completed lessons:', updatedCompletedLessons);
 
     // Update profile
     const updated = await updateProfile(user.uid, {
@@ -144,8 +168,14 @@ export default function LearnPage() {
       completedLessons: updatedCompletedLessons as any,
     });
 
+    console.log('Profile updated:', updated);
+    console.log('New completed lessons:', updated?.completedLessons);
+
     if (updated) {
       setUser(updated);
+      alert(`🎉 Lesson Complete! You earned ${xpEarned} XP! Next lesson unlocked!`);
+    } else {
+      alert('❌ Failed to save lesson progress. Please try again!');
     }
 
     setCompletingLesson(false);
