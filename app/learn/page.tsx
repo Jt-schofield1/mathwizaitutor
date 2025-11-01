@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,6 +95,7 @@ export default function LearnPage() {
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
   const [lessonStep, setLessonStep] = useState(0);
   const [completingLesson, setCompletingLesson] = useState(false);
+  const cleanupRunRef = useRef<string>(''); // Track last cleaned grade
 
   if (!user) {
     return <div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>;
@@ -104,6 +105,13 @@ export default function LearnPage() {
   useEffect(() => {
     const cleanupInvalidLessons = async () => {
       if (!user) return;
+      
+      const cleanupKey = `${user.uid}-${user.gradeLevel}`;
+      
+      // Skip if already cleaned up for this user/grade combination
+      if (cleanupRunRef.current === cleanupKey) {
+        return;
+      }
       
       const lessons = generateLessonsForGrade(user.gradeLevel);
       const validLessonIds = new Set(lessons.map(l => l.id));
@@ -118,6 +126,8 @@ export default function LearnPage() {
         console.log('Before:', user.completedLessons);
         console.log('After:', validCompletedLessons);
         
+        cleanupRunRef.current = cleanupKey; // Mark as cleaned
+        
         const updated = await updateProfile(user.uid, {
           completedLessons: validCompletedLessons as any,
         });
@@ -126,11 +136,13 @@ export default function LearnPage() {
           setUser(updated);
           console.log('Invalid lessons cleaned up successfully');
         }
+      } else {
+        cleanupRunRef.current = cleanupKey; // Mark as checked (no cleanup needed)
       }
     };
     
     cleanupInvalidLessons();
-  }, [user?.gradeLevel]); // Run when grade level changes
+  }, [user?.uid, user?.gradeLevel]); // Run when user or grade level changes
 
   const lessons = generateLessonsForGrade(user.gradeLevel);
   
