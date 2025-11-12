@@ -173,11 +173,13 @@ export default function PracticePage() {
   const [unlockedAchievements, setUnlockedAchievements] = useState<Achievement[]>([]);
   const [isCheckingAchievements, setIsCheckingAchievements] = useState(false);
 
+  // Only fetch problems on initial mount or when user ID changes
+  // Don't refetch when user properties (XP, level, etc.) change
   useEffect(() => {
     if (user) {
       fetchProblemsFromAPI();
     }
-  }, [user]);
+  }, [user?.uid]); // Changed from [user] to [user?.uid]
 
   const fetchProblemsFromAPI = async () => {
     if (!user) return;
