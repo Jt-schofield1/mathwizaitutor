@@ -257,15 +257,19 @@ export default function OnboardingPage() {
     const initialMastery = correctCount / placementQuestions.length;
     
     // Initialize skills based on grade level
+    // Only set mastery for skills actually practiced in placement test
     const initialSkills: SkillMastery[] = [
+      // Addition: Tested in placement, so we can estimate mastery
       { skillId: 'addition', skillName: 'Addition', category: 'addition', masteryLevel: initialMastery, practiceCount: answers.length, p_known: initialMastery, p_learn: 0.3, p_guess: 0.25, p_slip: 0.1, lastPracticed: new Date() },
-      { skillId: 'subtraction', skillName: 'Subtraction', category: 'subtraction', masteryLevel: initialMastery * 0.9, practiceCount: 0, p_known: initialMastery * 0.9, p_learn: 0.3, p_guess: 0.25, p_slip: 0.1, lastPracticed: new Date() },
+      // Other skills: Not tested yet, so start at 0% mastery
+      { skillId: 'subtraction', skillName: 'Subtraction', category: 'subtraction', masteryLevel: 0, practiceCount: 0, p_known: 0, p_learn: 0.3, p_guess: 0.25, p_slip: 0.1, lastPracticed: new Date() },
     ];
     
     if (selectedGrade >= 2) {
       initialSkills.push(
-        { skillId: 'multiplication', skillName: 'Multiplication', category: 'multiplication', masteryLevel: initialMastery * 0.8, practiceCount: 0, p_known: initialMastery * 0.8, p_learn: 0.3, p_guess: 0.25, p_slip: 0.1, lastPracticed: new Date() },
-        { skillId: 'division', skillName: 'Division', category: 'division', masteryLevel: initialMastery * 0.7, practiceCount: 0, p_known: initialMastery * 0.7, p_learn: 0.3, p_guess: 0.25, p_slip: 0.1, lastPracticed: new Date() },
+        // Multiplication/Division: Not tested, start at 0%
+        { skillId: 'multiplication', skillName: 'Multiplication', category: 'multiplication', masteryLevel: 0, practiceCount: 0, p_known: 0, p_learn: 0.3, p_guess: 0.25, p_slip: 0.1, lastPracticed: new Date() },
+        { skillId: 'division', skillName: 'Division', category: 'division', masteryLevel: 0, practiceCount: 0, p_known: 0, p_learn: 0.3, p_guess: 0.25, p_slip: 0.1, lastPracticed: new Date() },
       );
     }
     

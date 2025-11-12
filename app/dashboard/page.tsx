@@ -347,22 +347,27 @@ export default function DashboardPage() {
             <CardContent className="p-6">
               {user.skills && user.skills.length > 0 ? (
                 <div className="grid md:grid-cols-2 gap-4">
-                  {user.skills.map((skill) => (
-                    <div key={skill.skillId} className="flex items-center justify-between p-4 bg-wizard-parchment-50 rounded-lg">
-                      <div>
-                        <h3 className="font-semibold text-wizard-purple-800">{skill.skillName}</h3>
-                        <p className="text-xs text-wizard-purple-600">
-                          {skill.practiceCount} practice{skill.practiceCount !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-wizard-purple-700">
-                          {Math.round(skill.masteryLevel * 100)}%
+                  {user.skills.map((skill) => {
+                    // Fix bug: Don't show mastery if they haven't practiced yet
+                    const actualMastery = skill.practiceCount > 0 ? skill.masteryLevel : 0;
+                    
+                    return (
+                      <div key={skill.skillId} className="flex items-center justify-between p-4 bg-wizard-parchment-50 rounded-lg">
+                        <div>
+                          <h3 className="font-semibold text-wizard-purple-800">{skill.skillName}</h3>
+                          <p className="text-xs text-wizard-purple-600">
+                            {skill.practiceCount} practice{skill.practiceCount !== 1 ? 's' : ''}
+                          </p>
                         </div>
-                        <p className="text-xs text-wizard-purple-500">mastery</p>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-wizard-purple-700">
+                            {Math.round(actualMastery * 100)}%
+                          </div>
+                          <p className="text-xs text-wizard-purple-500">mastery</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8">
