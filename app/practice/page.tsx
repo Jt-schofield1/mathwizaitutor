@@ -454,10 +454,8 @@ export default function PracticePage() {
     } catch (error) {
       console.error('Failed to check achievements:', error);
     } finally {
-      // Reset the flag after a delay to allow the state to update
-      setTimeout(() => {
-        setIsCheckingAchievements(false);
-      }, 1000);
+      // Reset the flag immediately - no delay needed
+      setIsCheckingAchievements(false);
     }
   };
 
@@ -525,7 +523,11 @@ export default function PracticePage() {
         {unlockedAchievements.length > 0 && (
           <AchievementUnlock 
             achievements={unlockedAchievements}
-            onComplete={() => setUnlockedAchievements([])}
+            onComplete={() => {
+              console.log('Achievement animation complete, clearing state');
+              setUnlockedAchievements([]);
+              setIsCheckingAchievements(false); // Extra safety: ensure flag is reset
+            }}
           />
         )}
       </AnimatePresence>
