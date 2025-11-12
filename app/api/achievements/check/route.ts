@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const totalXP = newAchievements.reduce((sum, a) => sum + a.xpReward, 0);
 
       // Update user profile with new achievements and XP
-      const updatedAchievements = dedupeAchievements<Achievement>([
+      const updatedAchievements = dedupeAchievements([
         ...baselineAchievements,
         ...newAchievements,
       ]);
