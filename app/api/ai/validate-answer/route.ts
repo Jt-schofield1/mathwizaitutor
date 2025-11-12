@@ -54,14 +54,15 @@ Is the student's answer correct? Provide encouraging feedback.`
         if (groqResponse.ok) {
           const data = await groqResponse.json();
           const feedback = data.choices[0].message.content;
-          
+
           // Determine if correct
           const normalizedStudent = String(studentAnswer).trim().toLowerCase();
           const normalizedCorrect = String(correctAnswer).trim().toLowerCase();
-          const isCorrect = normalizedStudent === normalizedCorrect || 
-                           feedback.toLowerCase().includes('correct') ||
-                           feedback.toLowerCase().includes('right') ||
-                           feedback.toLowerCase().includes('yes');
+          const feedbackLower = feedback.toLowerCase();
+          const positiveMatch = /\b(correct|right|yes)\b/.test(feedbackLower);
+          const negativeMatch =
+            /\b(incorrect|wrong|no)\b/.test(feedbackLower) || /\bnot\s+(correct|right)\b/.test(feedbackLower);
+          const isCorrect = normalizedStudent === normalizedCorrect || (!negativeMatch && positiveMatch);
 
           return NextResponse.json({
             success: true,
