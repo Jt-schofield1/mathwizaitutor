@@ -3,7 +3,7 @@
 **Codebase:** MathWiz Academy
 
 ## Summary
-Comprehensive audit of the entire codebase identified and fixed **4 critical bugs** across API routes, components, and state management logic.
+Comprehensive audit of the entire codebase identified and fixed **6 critical bugs** across API routes, components, state management logic, and data initialization.
 
 ---
 
@@ -253,6 +253,119 @@ useEffect(() => {
 - **NOT** when XP, level, achievements, or any other property changes
 - Questions remain stable throughout the entire 10-question session
 - Only fetches new questions when explicitly requested via `handleNext`
+
+---
+
+## Bug #5: Achievement Spam on Older iOS/Safari 📱 **HIGH SEVERITY**
+**Location:** `components/wizard/achievement-unlock.tsx` + `app/practice/page.tsx`  
+**Type:** Browser Compatibility / Callback Reliability  
+**Status:** ✅ **FIXED**
+
+### Problem
+On older iOS/Safari browsers (pre-iOS 16), achievement unlock animations would flash/loop repeatedly instead of showing once and disappearing. The "First Spell Cast" achievement would spam the screen.
+
+### Root Cause
+1. **Stale callback in dependency array** - Including `onComplete` in useEffect deps caused re-renders on older Safari
+2. **No safety timeout** - If callback didn't fire (common on older iOS), achievement stayed in state forever
+3. **Race condition with 1-second delay** - Allowed duplicate achievement checks
+
+### Impact
+- **User Frustration:** Achievement animations looped endlessly
+- **iOS Compatibility:** Older devices couldn't use the app properly
+- **Trust Issues:** System appeared broken
+
+### Fix Applied
+```typescript
+// Added safety timeout
+useEffect(() => {
+  const safetyTimer = setTimeout(() => {
+    console.log('Achievement auto-clear safety timeout triggered');
+    setShow(false);
+    onComplete();
+  }, 10000);
+  return () => clearTimeout(safetyTimer);
+}, []); // No dependencies - runs once on mount
+
+// Removed onComplete from other useEffect deps
+}, [currentIndex, achievements.length]); // Removed: onComplete
+
+// Removed unnecessary delay
+// Before: setTimeout(() => setIsCheckingAchievements(false), 1000);
+// After: setIsCheckingAchievements(false);
+
+// Added extra defensive clearing
+onComplete={() => {
+  setUnlockedAchievements([]);
+  setIsCheckingAchievements(false); // Double-ensure flag reset
+}}
+```
+
+### Solution Details
+- 10-second safety timeout auto-clears achievements even if callbacks fail
+- Removed problematic dependency that caused re-renders on Safari
+- Eliminated race condition delay
+- Extra defensive state clearing for reliability
+
+---
+
+## Bug #6: Fake Mastery Percentages for Unpracticed Skills 📊 **HIGH SEVERITY**
+**Location:** `app/onboarding/page.tsx` + `app/profile/page.tsx` + `app/dashboard/page.tsx`  
+**Type:** Logic Error / Misleading UX  
+**Status:** ✅ **FIXED**
+
+### Problem
+Skills showed high mastery percentages even when students had **0 practices**:
+```
+Addition:       80% (4 practices) ✅ Correct
+Subtraction:    72% (0 practices) ❌ FAKE
+Multiplication: 64% (0 practices) ❌ FAKE  
+Division:       56% (0 practices) ❌ FAKE
+```
+
+### Root Cause
+The onboarding placement test was pre-filling mastery levels for ALL skills based on the overall test score, even for skills not tested:
+
+```typescript
+// If student got 80% on placement test (testing addition):
+const initialMastery = 0.80;
+
+// Then it gave them mastery in EVERYTHING:
+Subtraction:     initialMastery * 0.9 = 72%  // Never practiced!
+Multiplication:  initialMastery * 0.8 = 64%  // Never practiced!
+Division:        initialMastery * 0.7 = 56%  // Never practiced!
+```
+
+### Impact
+- **Misleading Progress:** Parents/kids think they're proficient in untested skills
+- **Broken Achievement System:** "Skill Specialist" achievement could unlock unfairly
+- **Trust Erosion:** Profile data appears fake/inflated
+- **Poor UX:** Confusing to see mastery without practice
+
+### Fix Applied
+
+**Onboarding (app/onboarding/page.tsx):**
+```typescript
+// Before: Pre-filled with fake percentages
+masteryLevel: initialMastery * 0.9  // 72% with 0 practices
+
+// After: Start at 0% until practiced
+masteryLevel: 0  // 0% with 0 practices (honest!)
+```
+
+**Profile & Dashboard Display Fix:**
+```typescript
+// Added defensive check in both pages
+const actualMastery = skill.practiceCount > 0 ? skill.masteryLevel : 0;
+
+// Display actualMastery instead of raw masteryLevel
+{Math.round(actualMastery * 100)}%
+```
+
+### Solution Details
+- Only Addition gets initial mastery (actually tested in placement)
+- All other skills start at 0% mastery, 0 practices
+- Display logic double-checks: if `practiceCount === 0`, show 0% regardless of stored value
+- Handles both NEW users (correct data) and EXISTING users (fixes display)
 
 ---
 
