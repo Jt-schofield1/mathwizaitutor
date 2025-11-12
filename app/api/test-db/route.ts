@@ -7,6 +7,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase, getKidProfile, upsertKidProfile, isSupabaseConfigured } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
+  // Security: Restrict access to development environment only
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'This endpoint is only available in development mode' },
+      { status: 403 }
+    );
+  }
+
+  // Additional security: Check for a secret token in development
+  const authHeader = request.headers.get('authorization');
+  const expectedToken = process.env.TEST_DB_SECRET || 'dev-only-token';
+  
+  if (authHeader !== `Bearer ${expectedToken}`) {
+    return NextResponse.json(
+      { error: 'Unauthorized. Include valid authorization header.' },
+      { status: 401 }
+    );
+  }
+
   const results: any = {
     timestamp: new Date().toISOString(),
     tests: {},

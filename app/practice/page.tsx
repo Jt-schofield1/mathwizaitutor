@@ -323,10 +323,18 @@ export default function PracticePage() {
       console.error('Error validating answer:', error);
       // Fallback to simple validation
       const isCorrect = userAnswer.trim().toLowerCase() === currentProblem.answer.toLowerCase();
+      
+      // Calculate accuracy rate for fallback validation too
+      const newCorrectAnswers = user.correctAnswers + (isCorrect ? 1 : 0);
+      const newTotalProblems = user.totalProblemsCompleted + 1;
+      const newAccuracyRate = Math.round((newCorrectAnswers / newTotalProblems) * 100);
+      
+      // Update session stats
       setSessionStats({
         correct: sessionStats.correct + (isCorrect ? 1 : 0),
         total: sessionStats.total + 1,
       });
+      
       setFeedback({
         show: true,
         correct: isCorrect,
@@ -334,6 +342,43 @@ export default function PracticePage() {
           ? `🎉 Correct! The answer is ${currentProblem.answer}!`
           : `Not quite! The correct answer is ${currentProblem.answer}. Let's try another one!`,
       });
+      
+      // Update profile even in fallback mode to maintain consistent accuracy tracking
+      try {
+        if (isCorrect) {
+          const xpEarned = currentProblem.xpReward - (hintIndex * 5);
+          const newXP = user.xp + xpEarned;
+          const newLevel = Math.floor(newXP / 1000) + 1;
+          const completedProblemIds = [...(user.completedProblems || []), currentProblem.id];
+          
+          const updated = await updateProfile(user.uid, {
+            xp: newXP,
+            level: newLevel,
+            totalProblemsCompleted: newTotalProblems,
+            correctAnswers: newCorrectAnswers,
+            accuracyRate: newAccuracyRate,
+            completedProblems: completedProblemIds as any,
+          });
+          
+          if (updated) {
+            setUser(updated);
+            await checkForAchievements(updated);
+          }
+        } else {
+          // Even for incorrect answers, update accuracy stats
+          const updated = await updateProfile(user.uid, {
+            totalProblemsCompleted: newTotalProblems,
+            correctAnswers: newCorrectAnswers,
+            accuracyRate: newAccuracyRate,
+          });
+          
+          if (updated) {
+            setUser(updated);
+          }
+        }
+      } catch (profileError) {
+        console.error('Failed to update profile in fallback:', profileError);
+      }
     } finally {
       setLoading(false);
     }
