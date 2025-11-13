@@ -208,7 +208,9 @@ export default function PracticePage() {
   // Load available topics when user changes
   useEffect(() => {
     if (user) {
+      console.log('Loading topics for grade:', user.gradeLevel);
       const topics = getTopicsForGrade(user.gradeLevel);
+      console.log('Topics loaded:', topics.length);
       setAvailableTopics(topics);
       setTopicsLoaded(true);
     }
@@ -715,6 +717,7 @@ export default function PracticePage() {
 
   // Show loading while topics load
   if (showTopicSelector && !topicsLoaded) {
+    console.log('Showing topics loading screen...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -724,8 +727,16 @@ export default function PracticePage() {
       </div>
     );
   }
+  
+  // Fallback: If topics failed to load, skip selector
+  if (showTopicSelector && topicsLoaded && availableTopics.length === 0) {
+    console.warn('No topics available for grade:', user?.gradeLevel);
+    setShowTopicSelector(false);
+  }
 
   // Topic Selector Screen
+  console.log('Topic selector state:', { showTopicSelector, topicsLoaded, availableTopicsCount: availableTopics.length });
+  
   if (showTopicSelector && topicsLoaded && availableTopics.length > 0) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-wizard-purple-50 to-wizard-gold-50 p-6">
