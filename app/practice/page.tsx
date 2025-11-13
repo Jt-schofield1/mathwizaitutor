@@ -17,9 +17,11 @@ import { AchievementUnlock } from '@/components/wizard/achievement-unlock';
 import { useAuthStore } from '@/lib/store';
 import { updateProfile } from '@/lib/kid-auth';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Lightbulb, ChevronLeft, Sparkles, Check, X, Star, Trophy, Loader2 } from 'lucide-react';
+import { Target, Lightbulb, ChevronLeft, Sparkles, Check, X, Star, Trophy, Loader2, BookOpen, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import type { Problem, Achievement } from '@/types';
+import { getTopicsForGrade, type MathTopic, getDifficultyMultiplier } from '@/lib/math-topics';
+import { generateTopicProblem } from '@/lib/topic-problem-generators';
 
 // Generate practice problems dynamically based on grade level
 function generateProblemsForGrade(gradeLevel: number, count: number = 10): Problem[] {
@@ -152,6 +154,12 @@ export default function PracticePage() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   
+  // Topic selection state
+  const [showTopicSelector, setShowTopicSelector] = useState(true);
+  const [selectedTopic, setSelectedTopic] = useState<MathTopic | null>(null);
+  const [availableTopics, setAvailableTopics] = useState<MathTopic[]>([]);
+  const [setsCompleted, setSetsCompleted] = useState(0); // Track every 10 questions
+  
   const [problems, setProblems] = useState<Problem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
@@ -173,13 +181,53 @@ export default function PracticePage() {
   const [unlockedAchievements, setUnlockedAchievements] = useState<Achievement[]>([]);
   const [isCheckingAchievements, setIsCheckingAchievements] = useState(false);
 
+  // Load available topics when user changes
+  useEffect(() => {
+    if (user) {
+      const topics = getTopicsForGrade(user.gradeLevel);
+      setAvailableTopics(topics);
+    }
+  }, [user?.gradeLevel]);
+
   // Only fetch problems on initial mount or when user ID changes
   // Don't refetch when user properties (XP, level, etc.) change
   useEffect(() => {
-    if (user) {
+    if (user && selectedTopic) {
+      fetchProblemsForTopic();
+    } else if (user && !showTopicSelector) {
       fetchProblemsFromAPI();
     }
-  }, [user?.uid]); // Changed from [user] to [user?.uid]
+  }, [user?.uid, selectedTopic]); // Changed from [user] to [user?.uid]
+
+  const fetchProblemsForTopic = async () => {
+    if (!user || !selectedTopic) return;
+    
+    setLoading(true);
+    const newProblems: Problem[] = [];
+    
+    // Generate 10 problems for selected topic with progressive difficulty
+    for (let i = 0; i < 10; i++) {
+      const problem = generateTopicProblem(selectedTopic.id, {
+        gradeLevel: user.gradeLevel,
+        difficulty: Math.min(1 + setsCompleted, 5),
+        setsCompleted,
+      });
+      
+      if (problem) {
+        newProblems.push(problem);
+      } else {
+        // Fallback to regular problems if topic generator doesn't exist yet
+        const fallbackProblems = generateProblemsForGrade(user.gradeLevel, 1);
+        if (fallbackProblems.length > 0) {
+          newProblems.push(fallbackProblems[0]);
+        }
+      }
+    }
+    
+    setProblems(newProblems);
+    setCurrentIndex(0);
+    setLoading(false);
+  };
 
   const fetchProblemsFromAPI = async () => {
     if (!user) return;
@@ -405,8 +453,15 @@ export default function PracticePage() {
     if (currentIndex < problems.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // Fetch new problems from API when we run out
-      await fetchProblemsFromAPI();
+      // Completed a set of 10! Increase difficulty
+      setSetsCompleted(setsCompleted + 1);
+      
+      // Fetch new problems (will be harder now)
+      if (selectedTopic) {
+        await fetchProblemsForTopic();
+      } else {
+        await fetchProblemsFromAPI();
+      }
       setCurrentIndex(0);
     }
   };
@@ -501,6 +556,83 @@ export default function PracticePage() {
       setFetchingHint(false);
     }
   };
+
+  // Topic Selector Screen
+  if (showTopicSelector && availableTopics.length > 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-wizard-purple-50 to-wizard-gold-50 p-6">
+        <div className="max-w-4xl mx-auto">
+          <Link href="/dashboard" className="inline-flex items-center text-wizard-purple-600 hover:text-wizard-purple-700 mb-6">
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </Link>
+          
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-3xl text-wizard-purple-800 flex items-center gap-3">
+                <BookOpen className="w-8 h-8" />
+                Choose Your Practice Topic
+              </CardTitle>
+              <CardDescription className="text-lg">
+                Select a topic to practice, or choose "Mixed Practice" for all topics. Questions get harder as you progress!
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            {/* Mixed Practice Option */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Card 
+                className="cursor-pointer hover:shadow-lg transition-shadow border-4 border-wizard-gold-400 bg-gradient-to-br from-wizard-gold-50 to-wizard-purple-50"
+                onClick={() => {
+                  setSelectedTopic(null);
+                  setShowTopicSelector(false);
+                }}
+              >
+                <CardContent className="p-6">
+                  <div className="text-4xl mb-3">🎯</div>
+                  <h3 className="text-xl font-bold text-wizard-purple-800 mb-2">Mixed Practice</h3>
+                  <p className="text-sm text-wizard-purple-600">All topics for your grade level</p>
+                  <Badge className="mt-3 bg-wizard-gold-500">Recommended</Badge>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Topic Options */}
+            {availableTopics.map((topic) => (
+              <motion.div
+                key={topic.id}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Card 
+                  className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-wizard-purple-200 hover:border-wizard-purple-400"
+                  onClick={() => {
+                    setSelectedTopic(topic);
+                    setShowTopicSelector(false);
+                  }}
+                >
+                  <CardContent className="p-6">
+                    <div className="text-4xl mb-3">{topic.icon}</div>
+                    <h3 className="text-xl font-bold text-wizard-purple-800 mb-2">{topic.name}</h3>
+                    <p className="text-sm text-wizard-purple-600 mb-2">{topic.description}</p>
+                    {topic.realWorldContext && (
+                      <Badge variant="outline" className="text-xs">
+                        Real-world: {topic.realWorldContext}
+                      </Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentProblem) {
     return (
