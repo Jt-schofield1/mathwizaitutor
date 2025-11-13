@@ -260,7 +260,7 @@ export async function updateKidXP(kidId: string, xpGained: number) {
     if (!profile) return null;
 
     const newXP = profile.xp + xpGained;
-    const newLevel = Math.floor(newXP / 1000) + 1;
+    const newLevel = Math.floor(newXP / 600) + 1;
 
     return await upsertKidProfile(kidId, {
       xp: newXP,

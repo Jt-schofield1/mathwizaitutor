@@ -17,21 +17,37 @@ import { AchievementUnlock } from '@/components/wizard/achievement-unlock';
 import { useAuthStore } from '@/lib/store';
 import { updateProfile } from '@/lib/kid-auth';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Lightbulb, ChevronLeft, Sparkles, Check, X, Star, Trophy, Loader2 } from 'lucide-react';
+import { Target, Lightbulb, ChevronLeft, Sparkles, Check, X, Star, Trophy, Loader2, BookOpen, ArrowLeft, Eye } from 'lucide-react';
 import Link from 'next/link';
 import type { Problem, Achievement } from '@/types';
+import { getTopicsForGrade, type MathTopic, getDifficultyMultiplier } from '@/lib/math-topics';
+import { generateTopicProblem } from '@/lib/topic-problem-generators';
 
-// Generate practice problems dynamically based on grade level
-function generateProblemsForGrade(gradeLevel: number, count: number = 10): Problem[] {
+  // Generate practice problems dynamically based on grade level
+// WITH progressive difficulty - gets harder as student practices
+// ENSURES VARIETY - uses random seed to prevent repetition
+function generateProblemsForGrade(gradeLevel: number, count: number = 10, setsCompleted: number = 0): Problem[] {
   const problems: Problem[] = [];
   
+  // Calculate difficulty multiplier based on sets completed
+  const setMultiplier = getDifficultyMultiplier(setsCompleted);
+  
+  // Use unique seed for variety - combines timestamp + random + set number
+  const varietySeed = Date.now() + Math.random() * 1000 + setsCompleted * 100;
+  
   for (let i = 0; i < count; i++) {
-    const problemId = `practice_${gradeLevel}_${Date.now()}_${i}`;
+    // Unique problem ID ensures no repetition tracking
+    const problemId = `practice_${gradeLevel}_${varietySeed}_${i}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Progressive difficulty WITHIN the set: Q1 easier than Q10
+    const questionMultiplier = 1.0 + (i * 0.05); // Increases by 5% per question
+    const totalMultiplier = setMultiplier * questionMultiplier;
     
     if (gradeLevel === 0) {
-      // Kindergarten
-      const num1 = Math.floor(Math.random() * 5) + 1;
-      const num2 = Math.floor(Math.random() * 3) + 1;
+      // Kindergarten - numbers scale with difficulty
+      const maxNum = Math.min(5 + Math.floor(totalMultiplier * 3), 20);
+      const num1 = Math.floor(Math.random() * maxNum) + 1;
+      const num2 = Math.floor(Math.random() * Math.max(1, Math.floor(maxNum / 2))) + 1;
       problems.push({
         id: problemId,
         question: `${num1} + ${num2} = ?`,
@@ -47,11 +63,12 @@ function generateProblemsForGrade(gradeLevel: number, count: number = 10): Probl
         xpReward: 20,
       });
     } else if (gradeLevel === 1) {
-      // Grade 1
+      // Grade 1 - scale with difficulty  
+      const maxNum = Math.min(10 + Math.floor(totalMultiplier * 10), 50);
       const operations = ['add', 'subtract'];
       const op = operations[Math.floor(Math.random() * operations.length)];
-      const num1 = Math.floor(Math.random() * 10) + 1;
-      const num2 = Math.floor(Math.random() * (op === 'subtract' ? num1 : 10)) + 1;
+      const num1 = Math.floor(Math.random() * maxNum) + 1;
+      const num2 = Math.floor(Math.random() * (op === 'subtract' ? num1 : maxNum)) + 1;
       
       if (op === 'add') {
         problems.push({
@@ -85,12 +102,14 @@ function generateProblemsForGrade(gradeLevel: number, count: number = 10): Probl
         });
       }
     } else {
-      // Grades 2+
+      // Grades 2+ - scale dramatically with difficulty
+      const baseRange = 10 * gradeLevel;
+      const maxNum = Math.min(baseRange + Math.floor(totalMultiplier * baseRange), 1000);
       const operations = ['add', 'subtract', 'multiply'];
       const op = operations[Math.floor(Math.random() * operations.length)];
-      const multiplier = gradeLevel >= 3 ? 2 : 1;
-      const num1 = Math.floor(Math.random() * 20 * multiplier) + 1;
-      const num2 = Math.floor(Math.random() * (op === 'multiply' ? 10 : 20 * multiplier)) + 1;
+      
+      const num1 = Math.floor(Math.random() * maxNum) + 1;
+      const num2 = Math.floor(Math.random() * (op === 'multiply' ? Math.min(maxNum / 2, 25) : maxNum)) + 1;
       
       if (op === 'add') {
         problems.push({
@@ -108,6 +127,7 @@ function generateProblemsForGrade(gradeLevel: number, count: number = 10): Probl
           xpReward: 30 + (gradeLevel * 5),
         });
       } else if (op === 'subtract') {
+        // Ensure positive result
         const larger = Math.max(num1, num2);
         const smaller = Math.min(num1, num2);
         problems.push({
@@ -125,8 +145,9 @@ function generateProblemsForGrade(gradeLevel: number, count: number = 10): Probl
           xpReward: 30 + (gradeLevel * 5),
         });
       } else {
-        const small1 = Math.floor(Math.random() * 12) + 1;
-        const small2 = Math.floor(Math.random() * 12) + 1;
+        const maxMultiply = Math.min(12 + Math.floor(totalMultiplier * 5), 25);
+        const small1 = Math.floor(Math.random() * maxMultiply) + 1;
+        const small2 = Math.floor(Math.random() * maxMultiply) + 1;
         problems.push({
           id: problemId,
           question: `${small1} × ${small2} = ?`,
@@ -152,6 +173,13 @@ export default function PracticePage() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   
+  // Topic selection state
+  const [showTopicSelector, setShowTopicSelector] = useState(true);
+  const [selectedTopic, setSelectedTopic] = useState<MathTopic | null>(null);
+  const [availableTopics, setAvailableTopics] = useState<MathTopic[]>([]);
+  const [setsCompleted, setSetsCompleted] = useState(0); // Track every 10 questions
+  const [topicsLoaded, setTopicsLoaded] = useState(false);
+  
   const [problems, setProblems] = useState<Problem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
@@ -172,12 +200,59 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(false);
   const [unlockedAchievements, setUnlockedAchievements] = useState<Achievement[]>([]);
   const [isCheckingAchievements, setIsCheckingAchievements] = useState(false);
+  const [attemptsOnCurrentProblem, setAttemptsOnCurrentProblem] = useState(0);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [explanation, setExplanation] = useState('');
+  const [showVisualHint, setShowVisualHint] = useState(false);
 
+  // Load available topics when user changes
   useEffect(() => {
     if (user) {
+      const topics = getTopicsForGrade(user.gradeLevel);
+      setAvailableTopics(topics);
+      setTopicsLoaded(true);
+    }
+  }, [user?.gradeLevel]);
+
+  // Only fetch problems on initial mount or when user ID changes
+  // Don't refetch when user properties (XP, level, etc.) change
+  useEffect(() => {
+    if (user && selectedTopic) {
+      fetchProblemsForTopic();
+    } else if (user && !showTopicSelector) {
       fetchProblemsFromAPI();
     }
-  }, [user]);
+  }, [user?.uid, selectedTopic]); // Changed from [user] to [user?.uid]
+
+  const fetchProblemsForTopic = async () => {
+    if (!user || !selectedTopic) return;
+    
+    setLoading(true);
+    const newProblems: Problem[] = [];
+    
+    // Generate 10 problems for selected topic with progressive difficulty
+    for (let i = 0; i < 10; i++) {
+      const problem = generateTopicProblem(selectedTopic.id, {
+        gradeLevel: user.gradeLevel,
+        difficulty: Math.min(1 + setsCompleted, 5),
+        setsCompleted,
+      });
+      
+      if (problem) {
+        newProblems.push(problem);
+      } else {
+        // Fallback to regular problems if topic generator doesn't exist yet
+        const fallbackProblems = generateProblemsForGrade(user.gradeLevel, 1, setsCompleted);
+        if (fallbackProblems.length > 0) {
+          newProblems.push(fallbackProblems[0]);
+        }
+      }
+    }
+    
+    setProblems(newProblems);
+    setCurrentIndex(0);
+    setLoading(false);
+  };
 
   const fetchProblemsFromAPI = async () => {
     if (!user) return;
@@ -201,14 +276,14 @@ export default function PracticePage() {
       if (data.success && data.problems.length > 0) {
         setProblems(data.problems);
       } else {
-        // Fallback to local generation
-        const newProblems = generateProblemsForGrade(user.gradeLevel, 10);
+        // Fallback to local generation WITH progressive difficulty
+        const newProblems = generateProblemsForGrade(user.gradeLevel, 10, setsCompleted);
         setProblems(newProblems);
       }
     } catch (error) {
       console.error('Failed to fetch problems from API:', error);
-      // Fallback to local generation
-      const newProblems = generateProblemsForGrade(user.gradeLevel, 10);
+      // Fallback to local generation WITH progressive difficulty
+      const newProblems = generateProblemsForGrade(user.gradeLevel, 10, setsCompleted);
       setProblems(newProblems);
     }
   };
@@ -225,6 +300,7 @@ export default function PracticePage() {
     if (!currentProblem || !userAnswer.trim()) return;
 
     setLoading(true);
+    setAttemptsOnCurrentProblem(attemptsOnCurrentProblem + 1);
 
     try {
       // Validate answer with AI for personalized feedback
@@ -246,6 +322,18 @@ export default function PracticePage() {
       // Track wrong attempts for better hints
       if (!isCorrect) {
         setPreviousAttempts([...previousAttempts, userAnswer]);
+        
+        // RETRY SYSTEM: Give them 2 chances before moving on
+        if (attemptsOnCurrentProblem < 2) {
+          setFeedback({
+            show: true,
+            correct: false,
+            message: `${aiFeedback || 'Not quite right.'} 💪 Try again! You've got this!`,
+          });
+          setUserAnswer(''); // Clear input for retry
+          setLoading(false);
+          return; // Don't move to next question yet
+        }
       }
       
       // Update session stats
@@ -254,14 +342,31 @@ export default function PracticePage() {
         total: sessionStats.total + 1,
       });
 
-      // Show AI-powered feedback
+      // Generate encouraging messages based on performance
+      let encouragementMessage = '';
+      if (isCorrect) {
+        if (attemptsOnCurrentProblem === 1 && hintIndex === 0) {
+          encouragementMessage = '✨ Perfect! First try with no hints - you\'re a star! ⭐';
+        } else if (attemptsOnCurrentProblem === 1) {
+          encouragementMessage = '🎉 Great job! You got it!';
+        } else {
+          encouragementMessage = '👏 Nice work! You stuck with it and figured it out!';
+        }
+      } else {
+        encouragementMessage = `The answer is ${currentProblem.answer}. Let me show you how to solve it! 📚`;
+      }
+      
+      // Show AI-powered feedback with encouragement
       setFeedback({
         show: true,
         correct: isCorrect,
-        message: aiFeedback || (isCorrect 
-          ? `🎉 Correct! The answer is ${currentProblem.answer}!`
-          : `Not quite! The correct answer is ${currentProblem.answer}. Let's try another one!`),
+        message: aiFeedback || encouragementMessage,
       });
+      
+      // If wrong after 2 attempts, generate explanation
+      if (!isCorrect && attemptsOnCurrentProblem >= 2) {
+        await generateExplanation();
+      }
 
     // Calculate accuracy rate for EVERY answer (correct or incorrect)
     const newCorrectAnswers = user.correctAnswers + (isCorrect ? 1 : 0);
@@ -272,7 +377,7 @@ export default function PracticePage() {
       // Award XP
       const xpEarned = currentProblem.xpReward - (hintIndex * 5);
       const newXP = user.xp + xpEarned;
-      const newLevel = Math.floor(newXP / 1000) + 1;
+      const newLevel = Math.floor(newXP / 600) + 1;
       
       // Add to completed problems list
       const completedProblemIds = [...(user.completedProblems || []), currentProblem.id];
@@ -323,10 +428,18 @@ export default function PracticePage() {
       console.error('Error validating answer:', error);
       // Fallback to simple validation
       const isCorrect = userAnswer.trim().toLowerCase() === currentProblem.answer.toLowerCase();
+      
+      // Calculate accuracy rate for fallback validation too
+      const newCorrectAnswers = user.correctAnswers + (isCorrect ? 1 : 0);
+      const newTotalProblems = user.totalProblemsCompleted + 1;
+      const newAccuracyRate = Math.round((newCorrectAnswers / newTotalProblems) * 100);
+      
+      // Update session stats
       setSessionStats({
         correct: sessionStats.correct + (isCorrect ? 1 : 0),
         total: sessionStats.total + 1,
       });
+      
       setFeedback({
         show: true,
         correct: isCorrect,
@@ -334,6 +447,43 @@ export default function PracticePage() {
           ? `🎉 Correct! The answer is ${currentProblem.answer}!`
           : `Not quite! The correct answer is ${currentProblem.answer}. Let's try another one!`,
       });
+      
+      // Update profile even in fallback mode to maintain consistent accuracy tracking
+      try {
+        if (isCorrect) {
+          const xpEarned = currentProblem.xpReward - (hintIndex * 5);
+          const newXP = user.xp + xpEarned;
+          const newLevel = Math.floor(newXP / 600) + 1;
+          const completedProblemIds = [...(user.completedProblems || []), currentProblem.id];
+          
+          const updated = await updateProfile(user.uid, {
+            xp: newXP,
+            level: newLevel,
+            totalProblemsCompleted: newTotalProblems,
+            correctAnswers: newCorrectAnswers,
+            accuracyRate: newAccuracyRate,
+            completedProblems: completedProblemIds as any,
+          });
+          
+          if (updated) {
+            setUser(updated);
+            await checkForAchievements(updated);
+          }
+        } else {
+          // Even for incorrect answers, update accuracy stats
+          const updated = await updateProfile(user.uid, {
+            totalProblemsCompleted: newTotalProblems,
+            correctAnswers: newCorrectAnswers,
+            accuracyRate: newAccuracyRate,
+          });
+          
+          if (updated) {
+            setUser(updated);
+          }
+        }
+      } catch (profileError) {
+        console.error('Failed to update profile in fallback:', profileError);
+      }
     } finally {
       setLoading(false);
     }
@@ -351,6 +501,10 @@ export default function PracticePage() {
     setShowXPGain(false);
     setUnlockedAchievements([]); // Clear achievements
     setIsCheckingAchievements(false); // Reset achievement check flag
+    setAttemptsOnCurrentProblem(0); // Reset attempts counter
+    setShowExplanation(false); // Hide explanation
+    setExplanation(''); // Clear explanation
+    setShowVisualHint(false); // Hide visual hint
     
     // Small delay to ensure state clears
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -358,9 +512,113 @@ export default function PracticePage() {
     if (currentIndex < problems.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // Fetch new problems from API when we run out
-      await fetchProblemsFromAPI();
+      // Completed a set of 10! Increase difficulty
+      setSetsCompleted(setsCompleted + 1);
+      
+      // Fetch new problems (will be harder now)
+      if (selectedTopic) {
+        await fetchProblemsForTopic();
+      } else {
+        await fetchProblemsFromAPI();
+      }
       setCurrentIndex(0);
+    }
+  };
+
+  // Generate visual representation for young kids
+  const renderVisualHint = () => {
+    if (!currentProblem || user.gradeLevel > 2) return null;
+    
+    const question = currentProblem.question;
+    const addMatch = question.match(/(\d+)\s*\+\s*(\d+)/);
+    const subMatch = question.match(/(\d+)\s*-\s*(\d+)/);
+    
+    if (addMatch) {
+      const num1 = parseInt(addMatch[1]);
+      const num2 = parseInt(addMatch[2]);
+      if (num1 <= 20 && num2 <= 20) {
+        return (
+          <div className="flex flex-col items-center gap-4 p-6 bg-purple-50 rounded-lg border-2 border-purple-200">
+            <div className="text-lg font-semibold text-purple-700">Visual Helper:</div>
+            <div className="flex gap-4 items-center flex-wrap justify-center">
+              <div className="text-4xl">{' 🟣 '.repeat(num1)}</div>
+              <div className="text-2xl font-bold">+</div>
+              <div className="text-4xl">{' 🟢 '.repeat(num2)}</div>
+            </div>
+            <div className="text-sm text-purple-600">Count all the circles!</div>
+          </div>
+        );
+      }
+    }
+    
+    if (subMatch) {
+      const num1 = parseInt(subMatch[1]);
+      const num2 = parseInt(subMatch[2]);
+      if (num1 <= 20 && num2 <= num1) {
+        return (
+          <div className="flex flex-col items-center gap-4 p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
+            <div className="text-lg font-semibold text-blue-700">Visual Helper:</div>
+            <div className="flex gap-2 items-center flex-wrap justify-center">
+              {Array.from({ length: num1 }).map((_, i) => (
+                <span key={i} className={`text-3xl ${i < num2 ? 'opacity-30 line-through' : ''}`}>
+                  🟣
+                </span>
+              ))}
+            </div>
+            <div className="text-sm text-blue-600">Cross out {num2}, count what's left!</div>
+          </div>
+        );
+      }
+    }
+    
+    return null;
+  };
+
+  const generateExplanation = async () => {
+    if (!currentProblem) return;
+    
+    try {
+      const groqKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
+      if (!groqKey || groqKey === 'demo_key') {
+        // Fallback if no API key
+        setExplanation(`Here's how to solve it:\n\n1. Look at the problem: ${currentProblem.question}\n2. The correct answer is ${currentProblem.answer}\n3. Think about the steps that lead to this answer!`);
+        setShowExplanation(true);
+        return;
+      }
+      
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a patient math teacher explaining how to solve a problem step-by-step for a ${user?.gradeLevel || 1}th grader. Break it down into clear steps with reasoning. Use simple language and emojis to keep it friendly. Number the steps.`,
+            },
+            {
+              role: 'user',
+              content: `Explain how to solve this step-by-step:\n\n${currentProblem.question}\n\nCorrect answer: ${currentProblem.answer}`,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 400,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setExplanation(data.choices[0].message.content);
+        setShowExplanation(true);
+      }
+    } catch (error) {
+      console.error('Failed to generate explanation:', error);
+      // Fallback explanation
+      setExplanation(`Here's how to solve it:\n\n1. Look at the problem: ${currentProblem.question}\n2. The correct answer is ${currentProblem.answer}\n3. Try to understand the steps that lead to this answer!`);
+      setShowExplanation(true);
     }
   };
 
@@ -407,10 +665,8 @@ export default function PracticePage() {
     } catch (error) {
       console.error('Failed to check achievements:', error);
     } finally {
-      // Reset the flag after a delay to allow the state to update
-      setTimeout(() => {
-        setIsCheckingAchievements(false);
-      }, 1000);
+      // Reset the flag immediately - no delay needed
+      setIsCheckingAchievements(false);
     }
   };
 
@@ -457,6 +713,100 @@ export default function PracticePage() {
     }
   };
 
+  // Show loading while topics load
+  if (showTopicSelector && !topicsLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-wizard-purple-600" />
+          <p className="text-wizard-purple-700">Loading topics...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Fallback: If topics failed to load, skip selector
+  if (showTopicSelector && topicsLoaded && availableTopics.length === 0) {
+    setShowTopicSelector(false);
+  }
+
+  // Topic Selector Screen
+  if (showTopicSelector && topicsLoaded && availableTopics.length > 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-wizard-purple-50 to-wizard-gold-50 p-6">
+        <div className="max-w-4xl mx-auto">
+          <Link href="/dashboard" className="inline-flex items-center text-wizard-purple-600 hover:text-wizard-purple-700 mb-6">
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Dashboard
+          </Link>
+          
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-3xl text-wizard-purple-800 flex items-center gap-3">
+                <BookOpen className="w-8 h-8" />
+                Choose Your Practice Topic
+              </CardTitle>
+              <CardDescription className="text-lg">
+                Select a topic to practice, or choose "Mixed Practice" for all topics. Questions get harder as you progress!
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            {/* Mixed Practice Option */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Card 
+                className="cursor-pointer hover:shadow-lg transition-shadow border-4 border-wizard-gold-400 bg-gradient-to-br from-wizard-gold-50 to-wizard-purple-50"
+                onClick={() => {
+                  setSelectedTopic(null);
+                  setShowTopicSelector(false);
+                }}
+              >
+                <CardContent className="p-6">
+                  <div className="text-4xl mb-3">🎯</div>
+                  <h3 className="text-xl font-bold text-wizard-purple-800 mb-2">Mixed Practice</h3>
+                  <p className="text-sm text-wizard-purple-600">All topics for your grade level</p>
+                  <Badge className="mt-3 bg-wizard-gold-500">Recommended</Badge>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Topic Options */}
+            {availableTopics.map((topic) => (
+              <motion.div
+                key={topic.id}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Card 
+                  className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-wizard-purple-200 hover:border-wizard-purple-400"
+                  onClick={() => {
+                    setSelectedTopic(topic);
+                    setShowTopicSelector(false);
+                  }}
+                >
+                  <CardContent className="p-6">
+                    <div className="text-4xl mb-3">{topic.icon}</div>
+                    <h3 className="text-xl font-bold text-wizard-purple-800 mb-2">{topic.name}</h3>
+                    <p className="text-sm text-wizard-purple-600 mb-2">{topic.description}</p>
+                    {topic.realWorldContext && (
+                      <Badge variant="outline" className="text-xs">
+                        Real-world: {topic.realWorldContext}
+                      </Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentProblem) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -478,7 +828,11 @@ export default function PracticePage() {
         {unlockedAchievements.length > 0 && (
           <AchievementUnlock 
             achievements={unlockedAchievements}
-            onComplete={() => setUnlockedAchievements([])}
+            onComplete={() => {
+              console.log('Achievement animation complete, clearing state');
+              setUnlockedAchievements([]);
+              setIsCheckingAchievements(false); // Extra safety: ensure flag is reset
+            }}
           />
         )}
       </AnimatePresence>
@@ -560,6 +914,21 @@ export default function PracticePage() {
                   />
                 </div>
 
+                {/* Visual Helper for Young Kids */}
+                {!feedback.show && user.gradeLevel <= 2 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowVisualHint(!showVisualHint)}
+                    className="w-full bg-purple-50 hover:bg-purple-100 border-purple-300"
+                  >
+                    <Eye className="w-5 h-5 mr-2" />
+                    {showVisualHint ? 'Hide' : 'Show'} Visual Helper 🎨
+                  </Button>
+                )}
+                
+                {/* Visual Hint Display */}
+                {showVisualHint && renderVisualHint()}
+
                 {/* AI-Powered Hint Button */}
                 {!feedback.show && hintIndex < 3 && (
                   <Button
@@ -595,6 +964,26 @@ export default function PracticePage() {
                     </div>
                     <p className="text-wizard-purple-700">
                       {aiHint || currentProblem.hints[hintIndex - 1]?.content}
+                    </p>
+                  </motion.div>
+                )}
+                
+                {/* Step-by-Step Explanation (shown after 2 wrong attempts) */}
+                {showExplanation && explanation && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-blue-50 border-4 border-blue-400 p-6 rounded-lg shadow-lg"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <BookOpen className="w-6 h-6 text-blue-600" />
+                      <span className="font-bold text-xl text-blue-800">How to Solve This:</span>
+                    </div>
+                    <div className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+                      {explanation}
+                    </div>
+                    <p className="mt-4 text-sm text-blue-600 font-semibold">
+                      💡 Study this carefully! You might see similar problems later.
                     </p>
                   </motion.div>
                 )}

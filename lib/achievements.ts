@@ -24,7 +24,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Complete your very first problem!',
     icon: '✨',
     category: 'practice',
-    xpReward: 50,
+    xpReward: 5,
     condition: (user) => (user.totalProblemsCompleted || 0) >= 1,
   },
   {
@@ -33,7 +33,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Solve 10 problems',
     icon: '🧙',
     category: 'practice',
-    xpReward: 100,
+    xpReward: 10,
     condition: (user) => (user.totalProblemsCompleted || 0) >= 10,
     progress: (user) => ({ current: user.totalProblemsCompleted || 0, max: 10 }),
   },
@@ -43,7 +43,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Solve 50 problems',
     icon: '🔮',
     category: 'practice',
-    xpReward: 250,
+    xpReward: 25,
     condition: (user) => (user.totalProblemsCompleted || 0) >= 50,
     progress: (user) => ({ current: user.totalProblemsCompleted || 0, max: 50 }),
   },
@@ -53,7 +53,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Solve 100 problems',
     icon: '🌟',
     category: 'practice',
-    xpReward: 500,
+    xpReward: 50,
     condition: (user) => (user.totalProblemsCompleted || 0) >= 100,
     progress: (user) => ({ current: user.totalProblemsCompleted || 0, max: 100 }),
   },
@@ -63,7 +63,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Solve 500 problems - legendary!',
     icon: '👑',
     category: 'practice',
-    xpReward: 1000,
+    xpReward: 100,
     condition: (user) => (user.totalProblemsCompleted || 0) >= 500,
     progress: (user) => ({ current: user.totalProblemsCompleted || 0, max: 500 }),
   },
@@ -75,7 +75,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Practice 3 days in a row',
     icon: '🔥',
     category: 'practice',
-    xpReward: 100,
+    xpReward: 10,
     condition: (user) => (user.streak || 0) >= 3,
     progress: (user) => ({ current: user.streak || 0, max: 3 }),
   },
@@ -85,7 +85,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Practice 7 days in a row',
     icon: '⚡',
     category: 'practice',
-    xpReward: 200,
+    xpReward: 20,
     condition: (user) => (user.streak || 0) >= 7,
     progress: (user) => ({ current: user.streak || 0, max: 7 }),
   },
@@ -95,7 +95,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Practice 30 days in a row',
     icon: '💪',
     category: 'practice',
-    xpReward: 500,
+    xpReward: 50,
     condition: (user) => (user.streak || 0) >= 30,
     progress: (user) => ({ current: user.streak || 0, max: 30 }),
   },
@@ -107,7 +107,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Maintain 80% accuracy',
     icon: '🎯',
     category: 'mastery',
-    xpReward: 150,
+    xpReward: 15,
     condition: (user) => (user.accuracyRate || 0) >= 80 && (user.totalProblemsCompleted || 0) >= 10,
   },
   {
@@ -116,7 +116,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Maintain 90% accuracy',
     icon: '🏆',
     category: 'mastery',
-    xpReward: 300,
+    xpReward: 30,
     condition: (user) => (user.accuracyRate || 0) >= 90 && (user.totalProblemsCompleted || 0) >= 20,
   },
   {
@@ -125,7 +125,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Maintain 95% accuracy',
     icon: '💎',
     category: 'mastery',
-    xpReward: 500,
+    xpReward: 50,
     condition: (user) => (user.accuracyRate || 0) >= 95 && (user.totalProblemsCompleted || 0) >= 50,
   },
 
@@ -136,7 +136,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Reach Level 5',
     icon: '⭐',
     category: 'mastery',
-    xpReward: 100,
+    xpReward: 10,
     condition: (user) => (user.level || 1) >= 5,
   },
   {
@@ -145,7 +145,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Reach Level 10',
     icon: '🌠',
     category: 'mastery',
-    xpReward: 250,
+    xpReward: 25,
     condition: (user) => (user.level || 1) >= 10,
   },
   {
@@ -154,7 +154,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Reach Level 20',
     icon: '🔱',
     category: 'mastery',
-    xpReward: 500,
+    xpReward: 50,
     condition: (user) => (user.level || 1) >= 20,
   },
 
@@ -165,7 +165,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Master your first skill (90%+)',
     icon: '📖',
     category: 'mastery',
-    xpReward: 200,
+    xpReward: 20,
     condition: (user) => (user.skills || []).some(s => s.masteryLevel >= 0.9),
   },
   {
@@ -174,7 +174,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Master 3 different skills',
     icon: '🎓',
     category: 'mastery',
-    xpReward: 400,
+    xpReward: 40,
     condition: (user) => (user.skills || []).filter(s => s.masteryLevel >= 0.9).length >= 3,
   },
   {
@@ -183,7 +183,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Master all skills in your grade',
     icon: '🧠',
     category: 'mastery',
-    xpReward: 1000,
+    xpReward: 100,
     condition: (user) => {
       const skills = user.skills || [];
       return skills.length >= 5 && skills.every(s => s.masteryLevel >= 0.85);
@@ -197,7 +197,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Complete a 10-problem session with 100% accuracy',
     icon: '💯',
     category: 'special',
-    xpReward: 300,
+    xpReward: 30,
     condition: (user) => false, // Tracked separately during sessions
   },
   {
@@ -206,7 +206,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Solve 10 problems in under 5 minutes',
     icon: '⚡',
     category: 'special',
-    xpReward: 250,
+    xpReward: 25,
     condition: (user) => false, // Tracked separately during sessions
   },
   {
@@ -215,7 +215,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Practice after 10 PM',
     icon: '🦉',
     category: 'special',
-    xpReward: 100,
+    xpReward: 10,
     condition: (user) => false, // Time-based, checked separately
   },
   {
@@ -224,7 +224,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Practice before 6 AM',
     icon: '🌅',
     category: 'special',
-    xpReward: 100,
+    xpReward: 10,
     condition: (user) => false, // Time-based, checked separately
   },
   {
@@ -233,7 +233,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Use homework help 10 times',
     icon: '📚',
     category: 'social',
-    xpReward: 150,
+    xpReward: 15,
     condition: (user) => false, // Tracked separately
   },
 
@@ -244,7 +244,7 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
     description: 'Complete your first week!',
     icon: '🎉',
     category: 'special',
-    xpReward: 200,
+    xpReward: 20,
     condition: (user) => {
       const daysSinceCreation = Math.floor(
         (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24)

@@ -43,7 +43,7 @@ export const useAuthStore = create<AuthState>()(
       updateXP: (xpGained) => set((state) => {
         if (!state.user) return state;
         const newXP = state.user.xp + xpGained;
-        const newLevel = Math.floor(newXP / 1000) + 1;
+        const newLevel = Math.floor(newXP / 600) + 1;
         return {
           user: {
             ...state.user,

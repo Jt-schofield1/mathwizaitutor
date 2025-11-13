@@ -20,6 +20,18 @@ export function AchievementUnlock({ achievements, onComplete }: AchievementUnloc
   const [currentIndex, setCurrentIndex] = useState(0);
   const [show, setShow] = useState(true);
 
+  // Safety: Auto-clear after 10 seconds regardless of user interaction
+  // Prevents infinite loops on older iOS/Safari where callbacks might not fire
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      console.log('Achievement auto-clear safety timeout triggered');
+      setShow(false);
+      onComplete();
+    }, 10000);
+    
+    return () => clearTimeout(safetyTimer);
+  }, []);
+
   useEffect(() => {
     if (currentIndex >= achievements.length) {
       const timer = setTimeout(() => {
@@ -28,7 +40,7 @@ export function AchievementUnlock({ achievements, onComplete }: AchievementUnloc
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [currentIndex, achievements.length, onComplete]);
+  }, [currentIndex, achievements.length]); // Removed onComplete from deps for Safari compatibility
 
   if (!show || achievements.length === 0) return null;
 

@@ -12,6 +12,96 @@ interface MathRendererProps {
   content: string;
 }
 
+const HTML_ESCAPE_LOOKUP: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+const HTML_DECODE_LOOKUP: Record<string, string> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+};
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => HTML_ESCAPE_LOOKUP[char] ?? char);
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value.replace(/&(amp|lt|gt|quot|#39);/g, (match) => HTML_DECODE_LOOKUP[match] ?? match);
+}
+
+function createMathElement(math: string, block: boolean): string {
+  const rawMath = decodeHtmlEntities(math.trim());
+  const safeMath = escapeHtml(rawMath);
+  const tag = block ? 'div' : 'span';
+  const className = block ? 'math-block' : 'math-inline';
+  return `<${tag} class="${className}" data-math="${safeMath}"></${tag}>`;
+}
+
+type Token =
+  | { type: 'text'; content: string }
+  | { type: 'inline'; content: string }
+  | { type: 'block'; content: string };
+
+function tokenizeMath(input: string): Token[] {
+  const tokens: Token[] = [];
+  const pattern = /\$\$([\s\S]+?)\$\$|\$([^\$]+?)\$/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(input)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push({ type: 'text', content: input.slice(lastIndex, match.index) });
+    }
+
+    if (match[1] !== undefined) {
+      tokens.push({ type: 'block', content: match[1] });
+    } else if (match[2] !== undefined) {
+      tokens.push({ type: 'inline', content: match[2] });
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < input.length) {
+    tokens.push({ type: 'text', content: input.slice(lastIndex) });
+  }
+
+  return tokens;
+}
+
+function autoDetectMath(segment: string): string {
+  const placeholders: Array<{ token: string; math: string }> = [];
+  let working = segment;
+
+  const register = (math: string) => {
+    const token = `__MATH_PLACEHOLDER_${placeholders.length}__`;
+    placeholders.push({ token, math });
+    return token;
+  };
+
+  working = working.replace(/(\d+)\/(\d+)/g, (_match, numerator: string, denominator: string) =>
+    register(`\\frac{${numerator}}{${denominator}}`),
+  );
+
+  working = working.replace(/(\w)\^(\d+)/g, (_match, base: string, exponent: string) =>
+    register(`${base}^{${exponent}}`),
+  );
+
+  working = working.replace(/√(\d+)/g, (_match, value: string) => register(`\\sqrt{${value}}`));
+
+  return placeholders.reduce(
+    (acc, { token, math }) => acc.replace(token, createMathElement(math, false)),
+    working,
+  );
+}
+
 export function MathRenderer({ content }: MathRendererProps) {
   useEffect(() => {
     // Dynamically import KaTeX for rendering
@@ -35,26 +125,19 @@ export function MathRenderer({ content }: MathRendererProps) {
 
   // Parse content for math expressions
   const renderContent = () => {
-    // Replace inline math $...$ with KaTeX spans
-    let parsed = content.replace(/\$([^\$]+)\$/g, (match, math) => {
-      return `<span class="math-inline" data-math="${math.trim()}"></span>`;
-    });
+    const sanitized = escapeHtml(content);
+    const tokens = tokenizeMath(sanitized);
 
-    // Replace block math $$...$$ with KaTeX divs
-    parsed = parsed.replace(/\$\$([^\$]+)\$\$/g, (match, math) => {
-      return `<div class="math-block" data-math="${math.trim()}"></div>`;
-    });
+    return tokens
+      .map((token) => {
+        if (token.type === 'text') {
+          return autoDetectMath(token.content);
+        }
 
-    // Auto-detect common math patterns and wrap them
-    parsed = parsed
-      // Fractions like 3/4
-      .replace(/(\d+)\/(\d+)/g, '<span class="math-inline" data-math="\\frac{$1}{$2}"></span>')
-      // Exponents like x^2
-      .replace(/(\w)\^(\d+)/g, '<span class="math-inline" data-math="$1^{$2}"></span>')
-      // Square roots
-      .replace(/√(\d+)/g, '<span class="math-inline" data-math="\\sqrt{$1}"></span>');
-
-    return parsed;
+        const isBlock = token.type === 'block';
+        return createMathElement(token.content, isBlock);
+      })
+      .join('');
   };
 
   return (

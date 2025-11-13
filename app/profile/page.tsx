@@ -260,31 +260,36 @@ export default function ProfilePage() {
           <CardContent>
             {user.skills && user.skills.length > 0 ? (
               <div className="space-y-4">
-                {user.skills.map((skill) => (
-                  <div key={skill.skillId} className="p-4 bg-wizard-parchment-50 rounded-lg border-2 border-wizard-parchment-300">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-wizard-purple-800">{skill.skillName}</h3>
-                        <p className="text-sm text-wizard-purple-600">
-                          Practiced {skill.practiceCount} times
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-3xl font-bold text-wizard-purple-700">
-                          {Math.round(skill.masteryLevel * 100)}%
+                {user.skills.map((skill) => {
+                  // Fix bug: Don't show mastery if they haven't practiced yet
+                  const actualMastery = skill.practiceCount > 0 ? skill.masteryLevel : 0;
+                  
+                  return (
+                    <div key={skill.skillId} className="p-4 bg-wizard-parchment-50 rounded-lg border-2 border-wizard-parchment-300">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-wizard-purple-800">{skill.skillName}</h3>
+                          <p className="text-sm text-wizard-purple-600">
+                            Practiced {skill.practiceCount} times
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-3xl font-bold text-wizard-purple-700">
+                            {Math.round(actualMastery * 100)}%
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="h-3 bg-wizard-purple-100 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${skill.masteryLevel * 100}%` }}
-                        transition={{ duration: 1, delay: 0.2 }}
-                        className="h-full bg-gradient-to-r from-wizard-purple-500 to-wizard-gold-500"
+                      <div className="h-3 bg-wizard-purple-100 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${actualMastery * 100}%` }}
+                          transition={{ duration: 1, delay: 0.2 }}
+                          className="h-full bg-gradient-to-r from-wizard-purple-500 to-wizard-gold-500"
                       />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-12">

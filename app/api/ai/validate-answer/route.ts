@@ -55,13 +55,18 @@ Is the student's answer correct? Provide encouraging feedback.`
           const data = await groqResponse.json();
           const feedback = data.choices[0].message.content;
           
-          // Determine if correct
+          // Determine if correct using exact string comparison first
+          // AI feedback is for explanation only, not for correctness determination
           const normalizedStudent = String(studentAnswer).trim().toLowerCase();
           const normalizedCorrect = String(correctAnswer).trim().toLowerCase();
-          const isCorrect = normalizedStudent === normalizedCorrect || 
-                           feedback.toLowerCase().includes('correct') ||
-                           feedback.toLowerCase().includes('right') ||
-                           feedback.toLowerCase().includes('yes');
+          
+          // Try numeric comparison for math answers
+          const studentNum = parseFloat(normalizedStudent);
+          const correctNum = parseFloat(normalizedCorrect);
+          const isNumericMatch = !isNaN(studentNum) && !isNaN(correctNum) && 
+                                Math.abs(studentNum - correctNum) < 0.001;
+          
+          const isCorrect = normalizedStudent === normalizedCorrect || isNumericMatch;
 
           return NextResponse.json({
             success: true,
