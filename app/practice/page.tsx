@@ -208,9 +208,7 @@ export default function PracticePage() {
   // Load available topics when user changes
   useEffect(() => {
     if (user) {
-      console.log('Loading topics for grade:', user.gradeLevel);
       const topics = getTopicsForGrade(user.gradeLevel);
-      console.log('Topics loaded:', topics.length);
       setAvailableTopics(topics);
       setTopicsLoaded(true);
     }
@@ -291,22 +289,12 @@ export default function PracticePage() {
   };
 
   if (!user) {
-    return <div className="min-h-screen flex items-center justify-center"><p>Loading user data...</p></div>;
+    return <div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>;
   }
-  
-  // TEMPORARY: Visual confirmation that new code is deployed
-  console.log('🚀 NEW PRACTICE PAGE LOADED - VERSION 2.0');
-  console.log('User:', user);
-  console.log('showTopicSelector:', showTopicSelector);
-  console.log('topicsLoaded:', topicsLoaded);
-  console.log('availableTopics:', availableTopics);
 
   const currentProblem = problems[currentIndex];
   const progressPercent = ((currentIndex) / problems.length) * 100;
   const sessionAccuracy = sessionStats.total > 0 ? Math.round((sessionStats.correct / sessionStats.total) * 100) : 0;
-  
-  // DEBUG: Log every render
-  console.log('Practice page rendering. Topic selector:', showTopicSelector, 'Topics loaded:', topicsLoaded);
 
   const handleSubmit = async () => {
     if (!currentProblem || !userAnswer.trim()) return;
@@ -727,7 +715,6 @@ export default function PracticePage() {
 
   // Show loading while topics load
   if (showTopicSelector && !topicsLoaded) {
-    console.log('Showing topics loading screen...');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -740,13 +727,10 @@ export default function PracticePage() {
   
   // Fallback: If topics failed to load, skip selector
   if (showTopicSelector && topicsLoaded && availableTopics.length === 0) {
-    console.warn('No topics available for grade:', user?.gradeLevel);
     setShowTopicSelector(false);
   }
 
   // Topic Selector Screen
-  console.log('Topic selector state:', { showTopicSelector, topicsLoaded, availableTopicsCount: availableTopics.length });
-  
   if (showTopicSelector && topicsLoaded && availableTopics.length > 0) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-wizard-purple-50 to-wizard-gold-50 p-6">
@@ -837,11 +821,6 @@ export default function PracticePage() {
 
   return (
     <div className="min-h-screen">
-      {/* TEMPORARY: Visual confirmation of new deployment */}
-      <div className="bg-green-500 text-white text-center py-3 px-4 font-bold text-lg">
-        ✅ NEW VERSION DEPLOYED (v2.0) - If you see this, topic selector should work!
-      </div>
-      
       {/* Animations */}
       <AnimatePresence>
         {showWandAnimation && <WandAnimation show={showWandAnimation} onComplete={() => setShowWandAnimation(false)} />}
