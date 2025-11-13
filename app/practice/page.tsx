@@ -24,16 +24,25 @@ import { getTopicsForGrade, type MathTopic, getDifficultyMultiplier } from '@/li
 import { generateTopicProblem } from '@/lib/topic-problem-generators';
 
 // Generate practice problems dynamically based on grade level
-function generateProblemsForGrade(gradeLevel: number, count: number = 10): Problem[] {
+// WITH progressive difficulty - gets harder as student practices
+function generateProblemsForGrade(gradeLevel: number, count: number = 10, setsCompleted: number = 0): Problem[] {
   const problems: Problem[] = [];
+  
+  // Calculate difficulty multiplier based on sets completed
+  const setMultiplier = getDifficultyMultiplier(setsCompleted);
   
   for (let i = 0; i < count; i++) {
     const problemId = `practice_${gradeLevel}_${Date.now()}_${i}`;
     
+    // Progressive difficulty WITHIN the set: Q1 easier than Q10
+    const questionMultiplier = 1.0 + (i * 0.05); // Increases by 5% per question
+    const totalMultiplier = setMultiplier * questionMultiplier;
+    
     if (gradeLevel === 0) {
-      // Kindergarten
-      const num1 = Math.floor(Math.random() * 5) + 1;
-      const num2 = Math.floor(Math.random() * 3) + 1;
+      // Kindergarten - numbers scale with difficulty
+      const maxNum = Math.min(5 + Math.floor(totalMultiplier * 3), 20);
+      const num1 = Math.floor(Math.random() * maxNum) + 1;
+      const num2 = Math.floor(Math.random() * Math.max(1, Math.floor(maxNum / 2))) + 1;
       problems.push({
         id: problemId,
         question: `${num1} + ${num2} = ?`,
@@ -49,11 +58,12 @@ function generateProblemsForGrade(gradeLevel: number, count: number = 10): Probl
         xpReward: 20,
       });
     } else if (gradeLevel === 1) {
-      // Grade 1
+      // Grade 1 - scale with difficulty  
+      const maxNum = Math.min(10 + Math.floor(totalMultiplier * 10), 50);
       const operations = ['add', 'subtract'];
       const op = operations[Math.floor(Math.random() * operations.length)];
-      const num1 = Math.floor(Math.random() * 10) + 1;
-      const num2 = Math.floor(Math.random() * (op === 'subtract' ? num1 : 10)) + 1;
+      const num1 = Math.floor(Math.random() * maxNum) + 1;
+      const num2 = Math.floor(Math.random() * (op === 'subtract' ? num1 : maxNum)) + 1;
       
       if (op === 'add') {
         problems.push({
@@ -87,12 +97,14 @@ function generateProblemsForGrade(gradeLevel: number, count: number = 10): Probl
         });
       }
     } else {
-      // Grades 2+
+      // Grades 2+ - scale dramatically with difficulty
+      const baseRange = 10 * gradeLevel;
+      const maxNum = Math.min(baseRange + Math.floor(totalMultiplier * baseRange), 1000);
       const operations = ['add', 'subtract', 'multiply'];
       const op = operations[Math.floor(Math.random() * operations.length)];
-      const multiplier = gradeLevel >= 3 ? 2 : 1;
-      const num1 = Math.floor(Math.random() * 20 * multiplier) + 1;
-      const num2 = Math.floor(Math.random() * (op === 'multiply' ? 10 : 20 * multiplier)) + 1;
+      
+      const num1 = Math.floor(Math.random() * maxNum) + 1;
+      const num2 = Math.floor(Math.random() * (op === 'multiply' ? Math.min(maxNum / 2, 25) : maxNum)) + 1;
       
       if (op === 'add') {
         problems.push({
@@ -110,6 +122,7 @@ function generateProblemsForGrade(gradeLevel: number, count: number = 10): Probl
           xpReward: 30 + (gradeLevel * 5),
         });
       } else if (op === 'subtract') {
+        // Ensure positive result
         const larger = Math.max(num1, num2);
         const smaller = Math.min(num1, num2);
         problems.push({
@@ -127,8 +140,9 @@ function generateProblemsForGrade(gradeLevel: number, count: number = 10): Probl
           xpReward: 30 + (gradeLevel * 5),
         });
       } else {
-        const small1 = Math.floor(Math.random() * 12) + 1;
-        const small2 = Math.floor(Math.random() * 12) + 1;
+        const maxMultiply = Math.min(12 + Math.floor(totalMultiplier * 5), 25);
+        const small1 = Math.floor(Math.random() * maxMultiply) + 1;
+        const small2 = Math.floor(Math.random() * maxMultiply) + 1;
         problems.push({
           id: problemId,
           question: `${small1} × ${small2} = ?`,
@@ -217,7 +231,7 @@ export default function PracticePage() {
         newProblems.push(problem);
       } else {
         // Fallback to regular problems if topic generator doesn't exist yet
-        const fallbackProblems = generateProblemsForGrade(user.gradeLevel, 1);
+        const fallbackProblems = generateProblemsForGrade(user.gradeLevel, 1, setsCompleted);
         if (fallbackProblems.length > 0) {
           newProblems.push(fallbackProblems[0]);
         }
@@ -251,14 +265,14 @@ export default function PracticePage() {
       if (data.success && data.problems.length > 0) {
         setProblems(data.problems);
       } else {
-        // Fallback to local generation
-        const newProblems = generateProblemsForGrade(user.gradeLevel, 10);
+        // Fallback to local generation WITH progressive difficulty
+        const newProblems = generateProblemsForGrade(user.gradeLevel, 10, setsCompleted);
         setProblems(newProblems);
       }
     } catch (error) {
       console.error('Failed to fetch problems from API:', error);
-      // Fallback to local generation
-      const newProblems = generateProblemsForGrade(user.gradeLevel, 10);
+      // Fallback to local generation WITH progressive difficulty
+      const newProblems = generateProblemsForGrade(user.gradeLevel, 10, setsCompleted);
       setProblems(newProblems);
     }
   };
