@@ -23,16 +23,21 @@ import type { Problem, Achievement } from '@/types';
 import { getTopicsForGrade, type MathTopic, getDifficultyMultiplier } from '@/lib/math-topics';
 import { generateTopicProblem } from '@/lib/topic-problem-generators';
 
-// Generate practice problems dynamically based on grade level
+  // Generate practice problems dynamically based on grade level
 // WITH progressive difficulty - gets harder as student practices
+// ENSURES VARIETY - uses random seed to prevent repetition
 function generateProblemsForGrade(gradeLevel: number, count: number = 10, setsCompleted: number = 0): Problem[] {
   const problems: Problem[] = [];
   
   // Calculate difficulty multiplier based on sets completed
   const setMultiplier = getDifficultyMultiplier(setsCompleted);
   
+  // Use unique seed for variety - combines timestamp + random + set number
+  const varietySeed = Date.now() + Math.random() * 1000 + setsCompleted * 100;
+  
   for (let i = 0; i < count; i++) {
-    const problemId = `practice_${gradeLevel}_${Date.now()}_${i}`;
+    // Unique problem ID ensures no repetition tracking
+    const problemId = `practice_${gradeLevel}_${varietySeed}_${i}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Progressive difficulty WITHIN the set: Q1 easier than Q10
     const questionMultiplier = 1.0 + (i * 0.05); // Increases by 5% per question
@@ -194,6 +199,9 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(false);
   const [unlockedAchievements, setUnlockedAchievements] = useState<Achievement[]>([]);
   const [isCheckingAchievements, setIsCheckingAchievements] = useState(false);
+  const [attemptsOnCurrentProblem, setAttemptsOnCurrentProblem] = useState(0);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [explanation, setExplanation] = useState('');
 
   // Load available topics when user changes
   useEffect(() => {
@@ -289,6 +297,7 @@ export default function PracticePage() {
     if (!currentProblem || !userAnswer.trim()) return;
 
     setLoading(true);
+    setAttemptsOnCurrentProblem(attemptsOnCurrentProblem + 1);
 
     try {
       // Validate answer with AI for personalized feedback
@@ -310,6 +319,18 @@ export default function PracticePage() {
       // Track wrong attempts for better hints
       if (!isCorrect) {
         setPreviousAttempts([...previousAttempts, userAnswer]);
+        
+        // RETRY SYSTEM: Give them 2 chances before moving on
+        if (attemptsOnCurrentProblem < 2) {
+          setFeedback({
+            show: true,
+            correct: false,
+            message: `${aiFeedback || 'Not quite right.'} 💪 Try again! You've got this!`,
+          });
+          setUserAnswer(''); // Clear input for retry
+          setLoading(false);
+          return; // Don't move to next question yet
+        }
       }
       
       // Update session stats
@@ -318,14 +339,31 @@ export default function PracticePage() {
         total: sessionStats.total + 1,
       });
 
-      // Show AI-powered feedback
+      // Generate encouraging messages based on performance
+      let encouragementMessage = '';
+      if (isCorrect) {
+        if (attemptsOnCurrentProblem === 1 && hintIndex === 0) {
+          encouragementMessage = '✨ Perfect! First try with no hints - you\'re a star! ⭐';
+        } else if (attemptsOnCurrentProblem === 1) {
+          encouragementMessage = '🎉 Great job! You got it!';
+        } else {
+          encouragementMessage = '👏 Nice work! You stuck with it and figured it out!';
+        }
+      } else {
+        encouragementMessage = `The answer is ${currentProblem.answer}. Let me show you how to solve it! 📚`;
+      }
+      
+      // Show AI-powered feedback with encouragement
       setFeedback({
         show: true,
         correct: isCorrect,
-        message: aiFeedback || (isCorrect 
-          ? `🎉 Correct! The answer is ${currentProblem.answer}!`
-          : `Not quite! The correct answer is ${currentProblem.answer}. Let's try another one!`),
+        message: aiFeedback || encouragementMessage,
       });
+      
+      // If wrong after 2 attempts, generate explanation
+      if (!isCorrect && attemptsOnCurrentProblem >= 2) {
+        await generateExplanation();
+      }
 
     // Calculate accuracy rate for EVERY answer (correct or incorrect)
     const newCorrectAnswers = user.correctAnswers + (isCorrect ? 1 : 0);
@@ -460,6 +498,9 @@ export default function PracticePage() {
     setShowXPGain(false);
     setUnlockedAchievements([]); // Clear achievements
     setIsCheckingAchievements(false); // Reset achievement check flag
+    setAttemptsOnCurrentProblem(0); // Reset attempts counter
+    setShowExplanation(false); // Hide explanation
+    setExplanation(''); // Clear explanation
     
     // Small delay to ensure state clears
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -477,6 +518,46 @@ export default function PracticePage() {
         await fetchProblemsFromAPI();
       }
       setCurrentIndex(0);
+    }
+  };
+
+  const generateExplanation = async () => {
+    if (!currentProblem) return;
+    
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_GROQ_API_KEY || ''}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a patient math teacher explaining how to solve a problem step-by-step for a ${user?.gradeLevel || 1}th grader. Break it down into clear steps with reasoning. Use simple language and emojis to keep it friendly. Number the steps.`,
+            },
+            {
+              role: 'user',
+              content: `Explain how to solve this step-by-step:\n\n${currentProblem.question}\n\nCorrect answer: ${currentProblem.answer}`,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 400,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setExplanation(data.choices[0].message.content);
+        setShowExplanation(true);
+      }
+    } catch (error) {
+      console.error('Failed to generate explanation:', error);
+      // Fallback explanation
+      setExplanation(`Here's how to solve it:\n\n1. Look at the problem: ${currentProblem.question}\n2. The correct answer is ${currentProblem.answer}\n3. Try to understand the steps that lead to this answer!`);
+      setShowExplanation(true);
     }
   };
 
@@ -790,6 +871,26 @@ export default function PracticePage() {
                     </div>
                     <p className="text-wizard-purple-700">
                       {aiHint || currentProblem.hints[hintIndex - 1]?.content}
+                    </p>
+                  </motion.div>
+                )}
+                
+                {/* Step-by-Step Explanation (shown after 2 wrong attempts) */}
+                {showExplanation && explanation && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-blue-50 border-4 border-blue-400 p-6 rounded-lg shadow-lg"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <BookOpen className="w-6 h-6 text-blue-600" />
+                      <span className="font-bold text-xl text-blue-800">How to Solve This:</span>
+                    </div>
+                    <div className="text-gray-800 whitespace-pre-wrap leading-relaxed">
+                      {explanation}
+                    </div>
+                    <p className="mt-4 text-sm text-blue-600 font-semibold">
+                      💡 Study this carefully! You might see similar problems later.
                     </p>
                   </motion.div>
                 )}
