@@ -68,7 +68,32 @@ How to Solve This:
 
 ---
 
-### 4. **Problem Variety System** 🎲
+### 4. **Visual Learning Aids for Young Students** 🎨
+**Problem:** Young kids (K-2) learn best with visual, concrete representations.
+
+**Solution:** Interactive Visual Helpers
+- ✅ Shows emoji circles for addition (purple + green circles to count)
+- ✅ Shows crossed-out circles for subtraction (see what's left)
+- ✅ Only appears for grades K-2 and simple problems (≤20)
+- ✅ Toggle on/off with "Show Visual Helper 🎨" button
+- ✅ Color-coded (purple/green for addition, blue for subtraction)
+
+**Example:**
+```
+Addition: 5 + 3
+🟣 🟣 🟣 🟣 🟣  +  🟢 🟢 🟢
+"Count all the circles!"
+
+Subtraction: 8 - 3
+🟣 🟣̶ 🟣̶ 🟣̶ 🟣 🟣 🟣 🟣
+"Cross out 3, count what's left!"
+```
+
+**Educational Impact:** Young learners can SEE the math, not just abstract numbers.
+
+---
+
+### 5. **Problem Variety System** 🎲
 **Problem:** Students might see repetitive problems.
 
 **Solution:** Unique Problem Generation
@@ -86,7 +111,7 @@ const problemId = `practice_${gradeLevel}_${varietySeed}_${i}_${Math.random().to
 
 ---
 
-### 5. **Comprehensive Topic System** 📖
+### 6. **Comprehensive Topic System** 📖
 **Problem:** Not enough specific practice for different skills.
 
 **Solution:** 40+ Grade-Appropriate Topics
@@ -105,7 +130,7 @@ const problemId = `practice_${gradeLevel}_${varietySeed}_${i}_${Math.random().to
 
 ---
 
-### 6. **Progressive Difficulty System** 📈
+### 7. **Progressive Difficulty System** 📈
 **Problem:** Static difficulty doesn't challenge improving students.
 
 **Solution:** Dual-Level Progression
@@ -167,6 +192,8 @@ Question 10, Set 3: Multiplier = 1.3 × 1.45 = 1.885x
 - ✅ Visual explanations with clear formatting
 - ✅ Retry system encourages persistence
 - ✅ "Study this!" prompts for learning
+- ✅ **Visual learning aids** for K-2 students (emoji circles)
+- ✅ **Error handling fallbacks** (works without API keys)
 
 ---
 

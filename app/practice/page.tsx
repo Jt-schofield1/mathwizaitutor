@@ -17,7 +17,7 @@ import { AchievementUnlock } from '@/components/wizard/achievement-unlock';
 import { useAuthStore } from '@/lib/store';
 import { updateProfile } from '@/lib/kid-auth';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Lightbulb, ChevronLeft, Sparkles, Check, X, Star, Trophy, Loader2, BookOpen, ArrowLeft } from 'lucide-react';
+import { Target, Lightbulb, ChevronLeft, Sparkles, Check, X, Star, Trophy, Loader2, BookOpen, ArrowLeft, Eye } from 'lucide-react';
 import Link from 'next/link';
 import type { Problem, Achievement } from '@/types';
 import { getTopicsForGrade, type MathTopic, getDifficultyMultiplier } from '@/lib/math-topics';
@@ -202,6 +202,7 @@ export default function PracticePage() {
   const [attemptsOnCurrentProblem, setAttemptsOnCurrentProblem] = useState(0);
   const [showExplanation, setShowExplanation] = useState(false);
   const [explanation, setExplanation] = useState('');
+  const [showVisualHint, setShowVisualHint] = useState(false);
 
   // Load available topics when user changes
   useEffect(() => {
@@ -501,6 +502,7 @@ export default function PracticePage() {
     setAttemptsOnCurrentProblem(0); // Reset attempts counter
     setShowExplanation(false); // Hide explanation
     setExplanation(''); // Clear explanation
+    setShowVisualHint(false); // Hide visual hint
     
     // Small delay to ensure state clears
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -521,14 +523,71 @@ export default function PracticePage() {
     }
   };
 
+  // Generate visual representation for young kids
+  const renderVisualHint = () => {
+    if (!currentProblem || user.gradeLevel > 2) return null;
+    
+    const question = currentProblem.question;
+    const addMatch = question.match(/(\d+)\s*\+\s*(\d+)/);
+    const subMatch = question.match(/(\d+)\s*-\s*(\d+)/);
+    
+    if (addMatch) {
+      const num1 = parseInt(addMatch[1]);
+      const num2 = parseInt(addMatch[2]);
+      if (num1 <= 20 && num2 <= 20) {
+        return (
+          <div className="flex flex-col items-center gap-4 p-6 bg-purple-50 rounded-lg border-2 border-purple-200">
+            <div className="text-lg font-semibold text-purple-700">Visual Helper:</div>
+            <div className="flex gap-4 items-center flex-wrap justify-center">
+              <div className="text-4xl">{' 🟣 '.repeat(num1)}</div>
+              <div className="text-2xl font-bold">+</div>
+              <div className="text-4xl">{' 🟢 '.repeat(num2)}</div>
+            </div>
+            <div className="text-sm text-purple-600">Count all the circles!</div>
+          </div>
+        );
+      }
+    }
+    
+    if (subMatch) {
+      const num1 = parseInt(subMatch[1]);
+      const num2 = parseInt(subMatch[2]);
+      if (num1 <= 20 && num2 <= num1) {
+        return (
+          <div className="flex flex-col items-center gap-4 p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
+            <div className="text-lg font-semibold text-blue-700">Visual Helper:</div>
+            <div className="flex gap-2 items-center flex-wrap justify-center">
+              {Array.from({ length: num1 }).map((_, i) => (
+                <span key={i} className={`text-3xl ${i < num2 ? 'opacity-30 line-through' : ''}`}>
+                  🟣
+                </span>
+              ))}
+            </div>
+            <div className="text-sm text-blue-600">Cross out {num2}, count what's left!</div>
+          </div>
+        );
+      }
+    }
+    
+    return null;
+  };
+
   const generateExplanation = async () => {
     if (!currentProblem) return;
     
     try {
+      const groqKey = process.env.NEXT_PUBLIC_GROQ_API_KEY;
+      if (!groqKey || groqKey === 'demo_key') {
+        // Fallback if no API key
+        setExplanation(`Here's how to solve it:\n\n1. Look at the problem: ${currentProblem.question}\n2. The correct answer is ${currentProblem.answer}\n3. Think about the steps that lead to this answer!`);
+        setShowExplanation(true);
+        return;
+      }
+      
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_GROQ_API_KEY || ''}`,
+          'Authorization': `Bearer ${groqKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -835,6 +894,21 @@ export default function PracticePage() {
                     autoFocus
                   />
                 </div>
+
+                {/* Visual Helper for Young Kids */}
+                {!feedback.show && user.gradeLevel <= 2 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowVisualHint(!showVisualHint)}
+                    className="w-full bg-purple-50 hover:bg-purple-100 border-purple-300"
+                  >
+                    <Eye className="w-5 h-5 mr-2" />
+                    {showVisualHint ? 'Hide' : 'Show'} Visual Helper 🎨
+                  </Button>
+                )}
+                
+                {/* Visual Hint Display */}
+                {showVisualHint && renderVisualHint()}
 
                 {/* AI-Powered Hint Button */}
                 {!feedback.show && hintIndex < 3 && (
