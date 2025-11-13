@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         ...userProfile,
         achievements: updatedAchievements,
         xp: finalXp,
-        level: Math.floor(finalXp / 1000) + 1,
+        level: Math.floor(finalXp / 600) + 1,
       };
 
     console.log('Achievement Check API - saving to Supabase...');

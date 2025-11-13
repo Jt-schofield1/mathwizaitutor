@@ -274,7 +274,7 @@ export default function PracticePage() {
       // Award XP
       const xpEarned = currentProblem.xpReward - (hintIndex * 5);
       const newXP = user.xp + xpEarned;
-      const newLevel = Math.floor(newXP / 1000) + 1;
+      const newLevel = Math.floor(newXP / 600) + 1;
       
       // Add to completed problems list
       const completedProblemIds = [...(user.completedProblems || []), currentProblem.id];
@@ -350,7 +350,7 @@ export default function PracticePage() {
         if (isCorrect) {
           const xpEarned = currentProblem.xpReward - (hintIndex * 5);
           const newXP = user.xp + xpEarned;
-          const newLevel = Math.floor(newXP / 1000) + 1;
+          const newLevel = Math.floor(newXP / 600) + 1;
           const completedProblemIds = [...(user.completedProblems || []), currentProblem.id];
           
           const updated = await updateProfile(user.uid, {
