@@ -178,6 +178,7 @@ export default function PracticePage() {
   const [selectedTopic, setSelectedTopic] = useState<MathTopic | null>(null);
   const [availableTopics, setAvailableTopics] = useState<MathTopic[]>([]);
   const [setsCompleted, setSetsCompleted] = useState(0); // Track every 10 questions
+  const [topicsLoaded, setTopicsLoaded] = useState(false);
   
   const [problems, setProblems] = useState<Problem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -209,6 +210,7 @@ export default function PracticePage() {
     if (user) {
       const topics = getTopicsForGrade(user.gradeLevel);
       setAvailableTopics(topics);
+      setTopicsLoaded(true);
     }
   }, [user?.gradeLevel]);
 
@@ -711,8 +713,20 @@ export default function PracticePage() {
     }
   };
 
+  // Show loading while topics load
+  if (showTopicSelector && !topicsLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-wizard-purple-600" />
+          <p className="text-wizard-purple-700">Loading topics...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Topic Selector Screen
-  if (showTopicSelector && availableTopics.length > 0) {
+  if (showTopicSelector && topicsLoaded && availableTopics.length > 0) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-wizard-purple-50 to-wizard-gold-50 p-6">
         <div className="max-w-4xl mx-auto">
