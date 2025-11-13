@@ -291,12 +291,22 @@ export default function PracticePage() {
   };
 
   if (!user) {
-    return <div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>;
+    return <div className="min-h-screen flex items-center justify-center"><p>Loading user data...</p></div>;
   }
+  
+  // TEMPORARY: Visual confirmation that new code is deployed
+  console.log('🚀 NEW PRACTICE PAGE LOADED - VERSION 2.0');
+  console.log('User:', user);
+  console.log('showTopicSelector:', showTopicSelector);
+  console.log('topicsLoaded:', topicsLoaded);
+  console.log('availableTopics:', availableTopics);
 
   const currentProblem = problems[currentIndex];
   const progressPercent = ((currentIndex) / problems.length) * 100;
   const sessionAccuracy = sessionStats.total > 0 ? Math.round((sessionStats.correct / sessionStats.total) * 100) : 0;
+  
+  // DEBUG: Log every render
+  console.log('Practice page rendering. Topic selector:', showTopicSelector, 'Topics loaded:', topicsLoaded);
 
   const handleSubmit = async () => {
     if (!currentProblem || !userAnswer.trim()) return;
@@ -827,6 +837,11 @@ export default function PracticePage() {
 
   return (
     <div className="min-h-screen">
+      {/* TEMPORARY: Visual confirmation of new deployment */}
+      <div className="bg-green-500 text-white text-center py-3 px-4 font-bold text-lg">
+        ✅ NEW VERSION DEPLOYED (v2.0) - If you see this, topic selector should work!
+      </div>
+      
       {/* Animations */}
       <AnimatePresence>
         {showWandAnimation && <WandAnimation show={showWandAnimation} onComplete={() => setShowWandAnimation(false)} />}
