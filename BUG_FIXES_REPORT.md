@@ -3,7 +3,7 @@
 **Codebase:** MathWiz Academy
 
 ## Summary
-Comprehensive audit of the entire codebase identified and fixed **6 critical bugs** across API routes, components, state management logic, and data initialization.
+Comprehensive audit of the entire codebase identified and fixed **7 critical bugs** across API routes, components, state management logic, data initialization, and game balance.
 
 ---
 
@@ -366,6 +366,92 @@ const actualMastery = skill.practiceCount > 0 ? skill.masteryLevel : 0;
 - All other skills start at 0% mastery, 0 practices
 - Display logic double-checks: if `practiceCount === 0`, show 0% regardless of stored value
 - Handles both NEW users (correct data) and EXISTING users (fixes display)
+
+---
+
+## Bug #7: XP Progression Too Fast - Level Skipping ⚡ **HIGH SEVERITY**
+**Location:** `lib/achievements.ts` + `app/practice/page.tsx` + `lib/store.ts` + `lib/supabase.ts` + `app/api/achievements/check/route.ts`  
+**Type:** Game Balance / Progression System  
+**Status:** ✅ **FIXED**
+
+### Problem
+XP was increasing **way too fast**, causing players to skip multiple levels after a single practice session:
+- Robert: **Level 3 → Level 14 from just 10 questions!** (11 levels in one session!)
+- User requirement: **20 questions = 1 level up**
+- Actual behavior: **~33 questions = 1 level** (before achievement bonuses)
+
+### Root Cause Analysis
+
+**Issue 1: Achievement XP Rewards Too High**
+Achievements were giving MASSIVE XP bonuses that completely broke progression:
+```
+First problem:     +50 XP  (equal to ~2 problems!)
+10 problems:       +100 XP (equal to ~3 problems!)
+50 problems:       +250 XP (equal to ~8 problems!)
+100 problems:      +500 XP (equal to ~17 problems!)
+Accuracy/Streaks:  +100-500 XP each
+```
+
+After 10 questions with 2-3 achievements unlocked:
+- Problems: 10 × 30 XP = **300 XP**
+- Achievements: **+150 to +650 XP** (First Problem + 10 Problems + possibly Accuracy)
+- **Total: 450-950 XP from achievements alone!**
+
+**Issue 2: Level Formula Threshold Too High**
+```typescript
+// Old formula
+const newLevel = Math.floor(newXP / 1000) + 1;
+// Required 1000 XP per level = ~33 questions @ 30 XP each
+
+// User wanted: 20 questions = 1 level
+```
+
+### Impact
+- **Broken Progression:** Kids could skip 10+ levels in one session
+- **No Sense of Achievement:** Leveling up lost meaning when it happened too fast
+- **Unrealistic Expectations:** Players expected fast progression to continue
+- **Parent Confusion:** Progress seemed fake/inflated
+
+### Fix Applied
+
+**Part 1: Reduce Achievement XP (÷10x)**
+```typescript
+// Before → After
+First problem:     50 XP → 5 XP
+10 problems:      100 XP → 10 XP
+50 problems:      250 XP → 25 XP
+100 problems:     500 XP → 50 XP
+Streaks (3/7/30): 100/200/500 → 10/20/50 XP
+Accuracy (80%/90%/95%): 150/300/500 → 15/30/50 XP
+Skills (1/3/all): 200/400/1000 → 20/40/100 XP
+Special/Levels:   Proportionally reduced
+```
+
+**Part 2: Adjust Level Formula (1000 → 600)**
+```typescript
+// Before: ~33 questions per level
+const newLevel = Math.floor(newXP / 1000) + 1;
+
+// After: 20 questions per level ✅
+const newLevel = Math.floor(newXP / 600) + 1;
+// 600 XP ÷ 30 XP per question = 20 questions
+```
+
+### New Progression Example
+10 questions at grade 1:
+- **Problems:** 10 × 30 XP = 300 XP
+- **Achievements:** +5 XP (first) + +10 XP (10 problems) = **15 XP total**
+- **Total XP earned:** 315 XP
+- **Levels gained:** 315 / 600 = **0.5 levels (no level up yet!)** ✅
+- After **20 questions:** 600 XP = **Level 2** ✅
+
+### Solution Details
+- Updated 5 files with level calculation logic
+- All achievement XP rewards reduced by ~10x
+- Level threshold changed from 1000 to 600 XP
+- Now requires exactly 20 problems (without hints) to level up
+- Achievements provide small bonuses, not huge level skips
+- Build tested and passed successfully
 
 ---
 
